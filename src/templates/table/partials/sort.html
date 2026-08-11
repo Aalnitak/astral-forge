@@ -1,0 +1,23 @@
+{% load static %}
+
+{% with asc_field=column.field desc_field="-"|add:column.field %}
+  {% if desc_field in request.get_full_path %}
+   {% querystring o=None as sort_url %}
+   {% static 'icons/arrow-up.svg' as sort_icon %}
+  {% elif asc_field in request.get_full_path %}
+   {% querystring o=desc_field as sort_url %}
+   {% static 'icons/arrow-down.svg' as sort_icon %}
+  {% else %}
+   {% querystring o=asc_field as sort_url %}
+   {% static 'icons/chevron-up-down.svg' as sort_icon %}
+  {% endif %}
+
+  <div class="dropdown dropdown-bottom dropdown-start">
+    <button type="button" class="flex cursor-pointer items-center gap-1" aria-expanded="false" data-dropdown-trigger>
+      {{ column.field|title }}
+     <a  hx-boost="false" hx-get="{{ sort_url }}" class="flex items-center gap-1" name="partials/table.html" aria-label="Sort by {{ column.field|title }}">
+          <img src="{{ sort_icon }}" class="size-4" alt="">
+        </a>
+    </button>
+  </div>
+{% endwith %}

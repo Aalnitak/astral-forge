@@ -1,0 +1,37 @@
+{% load static %}
+
+<div class="flex flex-col gap-2" data-chip-field="{{ filter.field }}">
+  <div class="join">
+    <label class="input input-sm validator join-item">
+      <img src="{% static 'icons/magnifying-glass.svg' %}" class="size-4 opacity-50" alt="">
+      <input type="search" placeholder="search" data-chip-input/>
+    </label>
+    <button type="button" class="btn btn-sm btn-success join-item" aria-label="Add criteria" data-chip-add>
+      <img src="{% static 'icons/plus.svg' %}" class="size-4" alt="">
+    </button>
+  </div>
+
+  <div class="flex flex-col items-start gap-2 pt-2" data-chip-list>
+    {% for value in request.GET|getlist:filter.field %}
+      <span class="badge badge-sm badge-ghost gap-1" data-chip>
+        <input type="hidden" name="{{ filter.field }}" value="{{ value }}">
+        <span data-chip-label>{{ value }}</span>
+        <button type="button" class="cursor-pointer" aria-label="Remove {{ value }}" data-chip-remove>
+          <img src="{% static 'icons/x-mark.svg' %}" class="size-3" alt="">
+        </button>
+      </span>
+    {% endfor %}
+  </div>
+
+  <template data-chip-template>
+    <span class="badge badge-sm badge-ghost gap-1" data-chip>
+      <input type="hidden" name="{{ filter.field }}" value=""/>
+      <span data-chip-label></span>
+      <button type="button" class="cursor-pointer" aria-label="Remove" data-chip-remove>
+        <img src="{% static 'icons/x-mark.svg' %}" class="size-3" alt="">
+      </button>
+    </span>
+  </template>
+
+  {% include "table/filters/actions.html" only %}
+</div>

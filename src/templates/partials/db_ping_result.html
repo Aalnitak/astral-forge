@@ -1,0 +1,23 @@
+{% if ok %}
+  <div hx-swap-oob="beforeend:#toasts">
+    <div class="alert alert-success flex justify-between" role="status" data-ttl="3000" aria-live="polite" aria-atomic="true">
+      <span>Database connection OK. Result: {{ result }}</span>
+      <button class="btn btn-outline btn-xs btn-neutral btn-square toast-close" data-toast-close type="button" aria-label="Dismiss">x</button>
+    </div>
+  </div>
+  <div class="inline-grid *:[grid-area:1/1]">
+    <div class="status status-success animate-ping"></div>
+    <div class="status status-success"></div>
+  </div> Database ping successful: {{ result }}
+{% else %}
+  <div hx-swap-oob="beforeend:#toasts">
+    <div class="alert alert-error flex justify-between" role="alert" data-ttl="3000" aria-live="assertive" aria-atomic="true">
+      <span>Database connection failed: {{ error }}</span>
+      <button class="btn btn-outline btn-xs btn-neutral btn-square toast-close" data-toast-close type="button" aria-label="Dismiss">x</button>
+    </div>
+  </div>
+  <div class="inline-grid *:[grid-area:1/1]">
+    <div class="status status-error animate-ping"></div>
+    <div class="status status-error"></div>
+  </div> Failed to ping database: {{ error }}
+{% endif %}

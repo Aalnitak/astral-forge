@@ -1,0 +1,11 @@
+<tr data-row-id="{{ object.id }}" class="hover:bg-base-300">
+  {% for cell in object.as_field_values_objects_list %}
+    <td class="{{ cell.class }}">
+      {% if cell.partial and cell.partial != "default" %}
+        {% include cell.partial with cell=cell %}
+      {% else %}
+        {{ cell.value }}
+      {% endif %}
+    </td>
+  {% endfor %}
+</tr>

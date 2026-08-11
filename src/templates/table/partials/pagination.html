@@ -1,0 +1,45 @@
+<nav class="flex flex-wrap items-center gap-2 text-sm" aria-label="Table pagination">
+  <p>Page <span class="font-bold">{{ page_obj.number }}</span> of <span class="font-bold">{{ page_obj.paginator.num_pages }}</span></p>
+
+  <div class="join">
+    <button
+      type="button"
+      class="join-item btn btn-xs w-[26px]"
+      {% if page_obj.has_previous %}
+        hx-get="{% querystring page=page_obj.previous_page_number %}"
+        name="partials/table.html"
+        hx-params="none"
+      {% else %}
+        disabled
+      {% endif %}
+      aria-label="Previous page">«</button>
+    <button
+      type="button"
+      class="join-item btn btn-xs w-[26px]"
+      {% if page_obj.has_next %}
+        hx-get="{% querystring page=page_obj.next_page_number %}"
+        name="partials/table.html"
+        hx-params="none"
+      {% else %}
+        disabled
+      {% endif %}
+      aria-label="Next page">»</button>
+  </div>
+
+  <p><span class="font-bold">{{ page_obj.paginator.count }}</span> Total items <span class="font-bold">/</span> Showing</p>
+
+  <div class="dropdown dropdown-top dropdown-center">
+    <button type="button" class="btn btn-sm btn-outline w-[50px]" aria-expanded="false" data-dropdown-trigger>
+      {{ page_obj.paginator.per_page }}
+    </button>
+
+    <ul class="dropdown-content menu menu-xs z-10 w-[70px] rounded-box bg-base-100 shadow-xs">
+      <li><button type="button" hx-get="{% querystring page_size=10 page=None %}" name="partials/table.html" hx-params="none">10</button></li>
+      <li><button type="button" hx-get="{% querystring page_size=25 page=None %}" name="partials/table.html" hx-params="none">25</button></li>
+      <li><button type="button" hx-get="{% querystring page_size=50 page=None %}" name="partials/table.html" hx-params="none">50</button></li>
+      <li><button type="button" hx-get="{% querystring page_size=100 page=None %}" name="partials/table.html" hx-params="none">100</button></li>
+    </ul>
+  </div>
+
+  <p>items per page.</p>
+</nav>

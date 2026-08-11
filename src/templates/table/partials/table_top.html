@@ -1,0 +1,14 @@
+<div class="flex items-start justify-between gap-2">
+  <div class="flex flex-wrap items-start gap-2">
+    {% if model.filters_objects %}
+      {% include "table/partials/filters.html" %}
+    {% endif %}
+    {% include "table/partials/filter_badges.html" %}
+  </div>
+
+  <div class="flex items-center gap-2">
+    {% if model.is_downloadable %}
+      {% include "partials/download_button.html" %}
+    {% endif %}
+  </div>
+</div>

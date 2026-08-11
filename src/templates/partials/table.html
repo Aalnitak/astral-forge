@@ -1,0 +1,26 @@
+<div
+  id="table-users"
+  class="flex flex-col gap-8"
+  hx-target="#table-users"
+  hx-swap="outerHTML"
+  hx-push-url="true">
+
+  {% include "table/partials/table_top.html" %}
+
+  <div class="overflow-auto max-h-[385px]">
+    <table id="users" class="table table-sm w-full table-pin-rows">
+      {% include "table/partials/table_header.html" %}
+      <tbody>
+        {% for object in object_list %}
+          {% include "table/partials/table_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj %}
+    {% include "table/partials/pagination.html" %}
+  {% endif %}
+
+  {% include "table/partials/table_bottom.html" %}
+</div>

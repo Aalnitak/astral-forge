@@ -1,0 +1,50 @@
+{% load static %}
+
+{% with filters=model.filters_objects %}
+  <div class="flex items-center gap-2">
+    <form class="dropdown dropdown-bottom" hx-get="{{ request.path }}" name="partials/table.html">
+      {% for key, values in request.GET.lists %}
+        {% if key == "o" or key == "page_size" %}
+          {% for value in values %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+      <button type="button" class="btn btn-sm btn-primary" aria-expanded="false" data-dropdown-trigger>
+        <img src="{% static 'icons/funnel.svg' %}" class="size-4" alt="">
+        Filter
+      </button>
+  
+      <ul class="dropdown-content menu menu-xs z-10 w-[254px] rounded-box border border-base-200 bg-base-100 shadow-sm" data-filter-menu>
+        <li class="menu-title">Filter by</li>
+        {% for filter in filters %}
+          <li><button type="button" data-filter-open="{{ filter.field }}">{{ model|verbose_name:filter.field|capfirst }}</button></li>
+        {% endfor %}
+      </ul>
+  
+      {% for filter in filters %}
+        <div class="dropdown-content card card-sm card-border z-10 w-[254px] bg-base-100 shadow-sm hidden" data-filter-panel="{{ filter.field }}">
+          <div class="card-body">
+            <div class="card-title gap-2">
+              <button type="button" class="btn btn-xs btn-primary btn-ghost" aria-label="Back to filters" data-filter-back>
+                <img src="{% static 'icons/arrow-left.svg' %}" class="size-4" alt="">
+              </button>
+              <span>{{ model|verbose_name:filter.field|capfirst }}</span>
+            </div>
+            {% include "table/filters/"|add:filter.filter_input_type|add:".html" %}
+          </div>
+        </div>
+      {% endfor %}
+    </form>
+  
+    {% querystring request.GET|getlist:"o"|as_dict:"o" request.GET|getlist:"page_size"|as_dict:"page_size" page=1 as clear_url %}
+    <button
+      type="button"
+      class="btn btn-sm"
+      hx-get="{{ clear_url }}"
+      name="partials/table.html"
+      hx-params="none">
+      Clear all
+    </button>
+  </div>
+{% endwith %}

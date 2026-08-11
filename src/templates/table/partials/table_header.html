@@ -1,0 +1,15 @@
+{% with columns=model.as_field_names_objects_list %}
+  <thead>
+    <tr>
+      {% for column in columns %}
+        <th scope="col" class="z-[2]">
+          {% if column.sortable %}
+            {% include "table/partials/sort.html" with column=column %}
+          {% else %}
+            {{ model|verbose_name:column.field|capfirst }}
+          {% endif %}
+        </th>
+      {% endfor %}
+    </tr>
+  </thead>
+{% endwith %}

@@ -1,0 +1,49 @@
+/* ==========================================================================
+   HTMX Request Progress Bar (top line)
+   - Shows a thin animated gradient bar during any HTMX request
+   - Works when HTMX adds the 'htmx-request' class (commonly on <body>)
+   ========================================================================== */
+
+/* Support both html and body as the host of the .htmx-request class */
+html.htmx-request::before,
+body.htmx-request::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #4f46e5, #22c55e, #06b6d4);
+  background-size: 200% 100%;
+  animation: progress 1s linear infinite;
+  z-index: 9999;
+}
+
+@keyframes progress {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html.htmx-request::before,
+  body.htmx-request::before {
+    animation: none;
+    background-position: 100% 0;
+  }
+}
+
+/* ==========================================================================
+   Loading State Helpers
+   - Apply to elements during requests for subtle feedback
+   - You'll toggle .is-loading in JS (see htmx-init.js)
+   ========================================================================== */
+
+.is-loading {
+  opacity: 0.6;
+  pointer-events: none; /* prevents double-clicks while loading */
+  transition: opacity 120ms ease-in-out;
+}
+
+/* Optional: a generic busy pattern via ARIA (non-HTMX-specific) */
+[aria-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}

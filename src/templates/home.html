@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+  <div class="px-6 pt-10 text-3xl font-semibold">Welcome to the Home Page</div>
+
+  <div class="px-6 mt-4">
+    This is a simple Django app template with HTMX and Daisy UI. Use the button below to test an HTMX POST request.
+    <div class="my-2 flex gap-4">
+      <button
+        class="btn btn-primary"
+        id="ping-btn"
+        hx-post="{% url 'ping' %}"
+        hx-target="#ping-result"
+      >
+        Ping (HTMX POST)
+      </button>
+      <div id="ping-result" class="flex gap-2 items-center">
+        Click the button to ping
+      </div>
+    </div>
+
+    <p>Database: {{ database|default:"Not configured" }}</p>
+    
+    <div class="flex my-2 gap-4">
+      <button
+        id="db-ping-btn"
+        class="btn btn-secondary"
+        hx-get="{% url 'db_ping' %}"
+        hx-target="#db-ping-result"
+      >
+        Ping Database (HTMX GET)
+      </button>
+
+      <div id="db-ping-result" class="flex gap-2 items-center">Click the button to ping the database</div>
+
+    </div>
+  </div>
+{% endblock %}

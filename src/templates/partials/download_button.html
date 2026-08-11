@@ -1,0 +1,9 @@
+{% load static %}
+
+{% url view.url_names.download as download_url %}
+{% if download_url %}
+  <a href="{{ download_url }}{% querystring %}" hx-boost="false" class="btn btn-sm btn-primary">
+    <img src="{% static 'icons/arrow-down-tray.svg' %}" class="size-4" alt="">
+    Download
+  </a>
+{% endif %}

@@ -1,0 +1,36 @@
+[project]
+name = "django-project-template"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.0.5",
+    "django-htmx>=1.27.0",
+    "django-htmx-base>=0.1.2",
+    "gunicorn",
+    "psycopg[binary]>=3.2.0",
+    "whitenoise>=6.11.0",
+]
+
+[dependency-groups]
+dev = [
+    "django-debug-toolbar>=7.0.0",
+    "ipython>=9.15.0",
+    "ruff>=0.15.17",
+]
+
+[tool.ruff.lint]
+# Go to https://docs.astral.sh/ruff/rules/ to see all the available rules.
+select = ["F", "E", "W", "I", "N", "C90", "ARG"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/" = ["ARG001"]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+known-first-party = ["django_htmx_base", "core"]
+
+[tool.ruff.format]
+docstring-code-format = true

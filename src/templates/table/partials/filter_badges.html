@@ -1,0 +1,20 @@
+{% load static %}
+
+<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+  {% for key, values in request.GET.lists %}
+    {% if key != "page" and key != "o" and key != "page_size" %}
+      <div class="flex items-center gap-0.5 rounded-box bg-base-200 px-1 py-0.5">
+        <span class="badge badge-xs badge-primary badge-soft">{{ model|verbose_name:key|capfirst }}</span>
+        {% for value in values %}
+          <span class="badge badge-xs gap-1">
+            {{ value }}
+            {% querystring request.GET values|list_remove:value|as_dict:key page=1 as remove_url %}
+            <button type="button" hx-get="{{ remove_url }}" name="partials/table.html" hx-params="none" class="cursor-pointer" aria-label="Remove {{ value }}">
+              <img src="{% static 'icons/x-mark.svg' %}" class="size-3" alt="">
+            </button>
+          </span>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
