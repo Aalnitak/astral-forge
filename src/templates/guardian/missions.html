@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Misiones{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-6xl px-6 py-8">
+      <div class="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase text-primary">Panel guardian</p>
+          <h1 class="text-3xl font-bold">Misiones activas</h1>
+          <p class="mt-2 text-base-content/70">
+            Completa misiones por forjador y revisa su recurrencia.
+          </p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-ghost" href="{% url 'guardian:dashboard' %}">Volver</a>
+          <a class="btn btn-primary" href="{% url 'guardian:assign_mission' %}">
+            Asignar mision
+          </a>
+          <div class="stats shadow">
+            <div class="stat">
+              <div class="stat-title">Misiones activas</div>
+              <div class="stat-value text-primary">{{ active_assignment_count }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if forger_cards %}
+        <div class="grid gap-6 xl:grid-cols-2">
+          {% for card in forger_cards %}
+            <article class="card bg-base-100 shadow-sm">
+              <div class="card-body gap-6">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 class="card-title">{{ card.forger.display_name }}</h2>
+                    <p class="text-sm text-base-content/60">
+                      {{ card.forger.get_age_group_display|default:"Sin grupo de edad" }}
+                    </p>
+                  </div>
+                  <span class="badge badge-primary">{{ card.active_assignment_count }}</span>
+                </div>
+
+                {% if card.active_assignment_count %}
+                  <div class="space-y-5">
+                    {% for group in card.assignment_groups %}
+                      {% if group.assignments %}
+                        <section>
+                          <div class="mb-3 flex items-center gap-2">
+                            <h3 class="text-sm font-semibold uppercase text-base-content/60">
+                              {{ group.label }}
+                            </h3>
+                            <span class="badge badge-ghost badge-sm">
+                              {{ group.assignments|length }}
+                            </span>
+                          </div>
+                          <ul class="space-y-3">
+                            {% for row in group.assignments %}
+                              <li class="rounded-box border border-base-300 bg-base-100 p-4">
+                                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <div class="font-medium">{{ row.assignment.mission.title }}</div>
+                                    {% if row.assignment.ends_on %}
+                                      <div class="text-sm text-base-content/60">
+                                        Hasta {{ row.assignment.ends_on }}
+                                      </div>
+                                    {% else %}
+                                      <div class="text-sm text-base-content/60">
+                                        Sin fecha de termino
+                                      </div>
+                                    {% endif %}
+                                  </div>
+                                  {% if row.is_completed_for_period %}
+                                    <span class="badge badge-success">Completada</span>
+                                  {% else %}
+                                    <form
+                                      method="post"
+                                      action="{% url 'guardian:complete_assignment' row.assignment.id %}"
+                                    >
+                                      {% csrf_token %}
+                                      <button class="btn btn-sm btn-primary" type="submit">
+                                        Completar hoy
+                                      </button>
+                                    </form>
+                                  {% endif %}
+                                </div>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </section>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="rounded-box border border-dashed border-base-300 p-4 text-sm text-base-content/60">
+                    No hay misiones activas.
+                  </div>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert">
+          <span>Aun no hay forjadores configurados.</span>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -43,7 +43,7 @@ class Reward(models.Model):
 class RewardRedemption(models.Model):
     class Status(models.TextChoices):
         REQUESTED = "requested", "Requested"
-        APPROVED = "approved", "Approved"
+        REDEEMED = "redeemed", "Redeemed"
         REJECTED = "rejected", "Rejected"
         FULFILLED = "fulfilled", "Fulfilled"
         CANCELED = "canceled", "Canceled"

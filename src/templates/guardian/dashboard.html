@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Panel guardian{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-6xl px-6 py-8">
+      <div class="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase text-primary">Panel guardian</p>
+          <h1 class="text-3xl font-bold">Firmamento familiar</h1>
+          <p class="mt-2 text-base-content/70">
+            Revisa el estado general de la familia y entra a los flujos de misiones o recompensas.
+          </p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-primary" href="{% url 'guardian:assign_mission' %}">
+            Asignar mision
+          </a>
+          <a class="btn btn-secondary" href="{% url 'guardian:redeem_reward' %}">
+            Canjear recompensa
+          </a>
+        </div>
+      </div>
+
+      <div class="mb-8 grid gap-4 md:grid-cols-2">
+        <a class="card bg-base-100 shadow-sm transition hover:shadow-md" href="{% url 'guardian:missions' %}">
+          <div class="card-body">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <h2 class="card-title">Misiones</h2>
+                <p class="text-base-content/70">Completa y revisa misiones activas.</p>
+              </div>
+              <div class="stat-value text-primary">{{ active_assignment_count }}</div>
+            </div>
+          </div>
+        </a>
+
+        <a class="card bg-base-100 shadow-sm transition hover:shadow-md" href="{% url 'guardian:rewards' %}">
+          <div class="card-body">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <h2 class="card-title">Recompensas</h2>
+                <p class="text-base-content/70">Revisa canjes y entregas pendientes.</p>
+              </div>
+              <div class="stat-value text-secondary">{{ pending_redemption_count }}</div>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      {% if forger_cards %}
+        <div class="grid gap-6 xl:grid-cols-2">
+          {% for card in forger_cards %}
+            <article class="card bg-base-100 shadow-sm">
+              <div class="card-body gap-5">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 class="card-title">{{ card.forger.display_name }}</h2>
+                    <p class="text-sm text-base-content/60">
+                      {{ card.forger.get_age_group_display|default:"Sin grupo de edad" }}
+                    </p>
+                  </div>
+                  <div class="avatar placeholder">
+                    <div class="w-10 rounded-full bg-primary text-primary-content">
+                      <span>{{ card.forger.display_name|first|upper }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-sm text-base-content/60">Estrellas</div>
+                    <div class="text-2xl font-bold">{{ card.star_balance }}</div>
+                  </div>
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-sm text-base-content/60">Luz Astral</div>
+                    <div class="text-2xl font-bold">{{ card.astral_light_total }}</div>
+                  </div>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <a class="btn btn-outline" href="{% url 'guardian:missions' %}">
+                    {{ card.active_assignment_count }} misiones
+                  </a>
+                  <a class="btn btn-outline" href="{% url 'guardian:rewards' %}">
+                    {{ card.pending_redemption_count }} recompensas pendientes
+                  </a>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert">
+          <span>Aun no hay forjadores configurados.</span>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}
