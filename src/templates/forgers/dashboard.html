@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Mi firmamento{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-5xl px-6 py-8">
+      <div class="mb-8">
+        <p class="text-sm font-semibold uppercase text-primary">Mi firmamento</p>
+        <h1 class="text-3xl font-bold">{{ forger.display_name }}</h1>
+        <p class="mt-2 text-base-content/70">
+          Completa tus misiones y mira como crece tu Luz Astral.
+        </p>
+        {% if is_current_forger %}
+          <div class="mt-4">
+            <a class="btn btn-secondary" href="{% url 'forgers:rewards' %}">
+              Ver recompensas
+            </a>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-8 grid gap-4 md:grid-cols-3">
+        <div class="stat rounded-box bg-base-100 shadow-sm">
+          <div class="stat-title">Estrellas</div>
+          <div class="stat-value text-primary">{{ star_balance }}</div>
+        </div>
+        <div class="stat rounded-box bg-base-100 shadow-sm">
+          <div class="stat-title">Luz Astral</div>
+          <div class="stat-value">{{ astral_light_total }}</div>
+        </div>
+        <div class="stat rounded-box bg-base-100 shadow-sm">
+          <div class="stat-title">Misiones activas</div>
+          <div class="stat-value text-secondary">{{ active_assignment_count }}</div>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <article class="card bg-base-100 shadow-sm">
+          <div class="card-body gap-6">
+            <div class="flex items-center justify-between gap-4">
+              <h2 class="card-title">Misiones</h2>
+              <span class="badge badge-primary">{{ active_assignment_count }}</span>
+            </div>
+
+            {% if active_assignment_count %}
+              <div class="space-y-5">
+                {% for group in assignment_groups %}
+                  {% if group.assignments %}
+                    <section>
+                      <div class="mb-3 flex items-center gap-2">
+                        <h3 class="text-sm font-semibold uppercase text-base-content/60">
+                          {{ group.label }}
+                        </h3>
+                        <span class="badge badge-ghost badge-sm">
+                          {{ group.assignments|length }}
+                        </span>
+                      </div>
+                      <ul class="space-y-3">
+                        {% for row in group.assignments %}
+                          <li class="rounded-box border border-base-300 bg-base-100 p-4">
+                            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <div class="font-medium">{{ row.assignment.mission.title }}</div>
+                                {% if row.assignment.mission.description %}
+                                  <div class="mt-1 text-sm text-base-content/60">
+                                    {{ row.assignment.mission.description }}
+                                  </div>
+                                {% endif %}
+                              </div>
+                              {% if row.is_completed_for_period %}
+                                <span class="badge badge-success">Completada</span>
+                              {% else %}
+                                <form
+                                  method="post"
+                                  action="{% url 'forgers:complete_assignment' row.assignment.id %}"
+                                >
+                                  {% csrf_token %}
+                                  <button class="btn btn-sm btn-primary" type="submit">
+                                    Completar
+                                  </button>
+                                </form>
+                              {% endif %}
+                            </div>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    </section>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="rounded-box border border-dashed border-base-300 p-4 text-sm text-base-content/60">
+                No tienes misiones activas.
+              </div>
+            {% endif %}
+          </div>
+        </article>
+
+        <aside class="card bg-base-100 shadow-sm">
+          <div class="card-body gap-6">
+            <div>
+              <h2 class="card-title">Familia</h2>
+              {% if family_members %}
+                <ul class="mt-3 space-y-3">
+                  {% for member in family_members %}
+                    <li class="rounded-box bg-base-200 p-4">
+                      <div class="flex items-start justify-between gap-3">
+                        <div>
+                          <div class="font-medium">
+                            <a class="link-hover" href="{% url 'forgers:profile' member.forger.user.username %}">
+                              {{ member.forger.display_name }}
+                            </a>
+                            {% if member.is_current %}
+                              <span class="badge badge-primary badge-sm">Tu</span>
+                            {% endif %}
+                          </div>
+                          <div class="text-xs text-base-content/60">
+                            {{ member.forger.get_age_group_display|default:"Sin grupo de edad" }}
+                            {% if member.forger.is_guardian %}
+                              - Guardian
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div class="rounded-box bg-base-100 p-3">
+                          <div class="text-xs text-base-content/60">Estrellas</div>
+                          <div class="font-bold">{{ member.star_balance }}</div>
+                        </div>
+                        <div class="rounded-box bg-base-100 p-3">
+                          <div class="text-xs text-base-content/60">Luz Astral</div>
+                          <div class="font-bold">{{ member.astral_light_total }}</div>
+                        </div>
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <div class="mt-3 rounded-box border border-dashed border-base-300 p-4 text-sm text-base-content/60">
+                  Aun no hay miembros configurados.
+                </div>
+              {% endif %}
+            </div>
+
+            <div>
+              <h2 class="card-title">Recompensas recientes</h2>
+            {% if recent_redemptions %}
+              <ul class="mt-3 space-y-2">
+                {% for redemption in recent_redemptions %}
+                  <li class="rounded-box bg-base-200 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <div class="text-sm font-medium">{{ redemption.reward.title }}</div>
+                        <div class="text-xs text-base-content/60">
+                          {{ redemption.star_cost }} estrellas
+                        </div>
+                      </div>
+                      {% if redemption.status == "fulfilled" %}
+                        <span class="badge badge-success">Entregada</span>
+                      {% elif redemption.status == "redeemed" %}
+                        <span class="badge badge-warning">Canjeada</span>
+                      {% elif redemption.status == "rejected" %}
+                        <span class="badge badge-error">Rechazada</span>
+                      {% elif redemption.status == "canceled" %}
+                        <span class="badge badge-neutral">Cancelada</span>
+                      {% else %}
+                        <span class="badge badge-ghost">{{ redemption.get_status_display }}</span>
+                      {% endif %}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="mt-3 rounded-box border border-dashed border-base-300 p-4 text-sm text-base-content/60">
+                Aun no tienes recompensas.
+              </div>
+            {% endif %}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+{% endblock %}
