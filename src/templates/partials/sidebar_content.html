@@ -10,6 +10,15 @@
       <ul class="menu menu-lg w-full">
         <li class="menu-title">Navegacion</li>
         <li><a href="{% url 'home' %}">Inicio</a></li>
+        {% if request_forger %}
+          <li><a href="{% url 'forgers:me' %}">Mi perfil</a></li>
+          <li><a href="{% url 'forgers:rewards' %}">Mis recompensas</a></li>
+        {% endif %}
+        {% if request_forger and request_forger.is_guardian %}
+          <li><a href="{% url 'guardian:dashboard' %}">Panel guardian</a></li>
+          <li><a href="{% url 'guardian:missions' %}">Misiones</a></li>
+          <li><a href="{% url 'guardian:rewards' %}">Recompensas</a></li>
+        {% endif %}
         {% if request.user.is_staff %}
           <li><a href="/admin/" hx-boost="false">Administracion</a></li>
         {% endif %}

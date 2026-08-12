@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "missions",
     "forge",
     "rewards",
+    "guardian",
 ]
 
 
@@ -128,6 +129,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "forgers.context_processors.request_forger",
             ],
             "builtins": [
                 "templates.tags.custom_tags",

@@ -229,7 +229,8 @@ Initial domain concepts:
 - `StarLedgerEntry`: spendable currency movement.
 - `AstralLightLedgerEntry`: permanent progress movement.
 - `Reward`: something stars can be redeemed for.
-- `RewardRedemption`: record of a reward being requested, approved, or redeemed.
+- `RewardRedemption`: record of a reward being requested, redeemed, or
+  fulfilled.
 
 Planned later domain concepts:
 
@@ -276,11 +277,15 @@ Fields:
 - `user`: one-to-one relationship with `settings.AUTH_USER_MODEL`;
 - `display_name`: product-facing name;
 - `age_group`: optional classification for child, teen, or adult;
+- `is_guardian`: whether the forger can access guardian workflows;
 - `created_at`;
 - `updated_at`.
 
 Reasoning: this keeps authentication conventional while allowing the application
 to use "forger" as its product-facing identity.
+
+Guardian permission is separate from age group. An adult is not automatically a
+guardian, and a guardian workflow should check `is_guardian` explicitly.
 
 ### `families.Family`
 
@@ -517,10 +522,10 @@ Fields:
 - `reward`;
 - `forger`: forger receiving the reward;
 - `requested_by`: forger who requested the redemption;
-- `approved_by`: optional forger who approved the redemption;
+- `approved_by`: guardian who handled the redemption request;
 - `forge_event`: optional one-to-one link to the spending event;
 - `star_cost`: snapshot of the reward cost at redemption time;
-- `status`: `requested`, `approved`, `rejected`, `fulfilled`, or `canceled`;
+- `status`: `requested`, `redeemed`, `rejected`, `fulfilled`, or `canceled`;
 - `requested_at`;
 - `resolved_at`;
 - `fulfilled_at`;
@@ -532,15 +537,16 @@ Constraint:
 
 - `star_cost` must be positive.
 
-Reasoning: redemptions need their own lifecycle because requesting, approving,
-spending stars, and fulfilling the reward may happen at different moments. The
-redemption stores a star cost snapshot so historical records remain accurate if
-the reward catalog changes later.
+Reasoning: redemptions need their own lifecycle because requesting, spending
+stars, and fulfilling the reward may happen at different moments.
+`redeemed` means stars have been spent. `fulfilled` means the reward has also
+been delivered. The redemption stores a star cost snapshot so historical records
+remain accurate if the reward catalog changes later.
 
 Reward spending flow:
 
 ```text
-RewardRedemption approved or fulfilled
+RewardRedemption redeemed or fulfilled
         |
         v
 ForgeEvent(event_type="reward_redeemed")
@@ -619,6 +625,7 @@ MissionAssignment(forger)
 Validation:
 
 - the mission must be active;
+- the assigning forger must be a guardian;
 - the forger must have an age group;
 - the mission must have an active `MissionAgeReward` for the forger's age
   group;
@@ -658,8 +665,23 @@ StarLedgerEntry(amount=-RewardRedemption.star_cost)
 Validation:
 
 - the redemption must not already have spent stars;
-- the redemption must be in a redeemable status;
+- the redemption must be `requested`;
 - the forger must have enough available stars.
+
+### `forge.services.reject_reward_redemption`
+
+Decision: rejecting a reward request is also handled by the service layer.
+
+Validation:
+
+- the redemption must be `requested`.
+
+Effects:
+
+- the redemption becomes `rejected`;
+- `approved_by` stores the guardian who handled the request;
+- `resolved_at` records when the request was rejected;
+- no `ForgeEvent` or star ledger entry is created.
 
 ### Balance Helpers
 

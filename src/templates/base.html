@@ -31,6 +31,15 @@
             <input id="main-sidebar" type="checkbox" class="drawer-toggle" />
             <div class="drawer-content">
                 {% include "partials/navbar.html" with uri_path=uri_path %}
+                {% if messages %}
+                    <div class="mx-auto mt-4 max-w-6xl px-6">
+                        {% for message in messages %}
+                            <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} mb-3">
+                                <span>{{ message }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 <main id="main-content">{% block content %}{% endblock %}</main>
             </div>
             

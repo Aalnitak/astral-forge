@@ -15,6 +15,7 @@ from forge.services import complete_mission_assignment
 from forge.services import get_astral_light_total
 from forge.services import get_star_balance
 from forge.services import redeem_reward
+from forge.services import reject_reward_redemption
 from forge.services import request_reward_redemption
 from forgers.models import ForgerProfile
 from missions.models import Mission
@@ -31,6 +32,7 @@ class ForgeServiceTests(TestCase):
             username="guardian",
             display_name="Guardian",
             age_group=ForgerProfile.AgeGroup.ADULT,
+            is_guardian=True,
         )
         self.child = self.create_forger(
             username="child",
@@ -38,12 +40,13 @@ class ForgeServiceTests(TestCase):
             age_group=ForgerProfile.AgeGroup.CHILD,
         )
 
-    def create_forger(self, username, display_name, age_group):
+    def create_forger(self, username, display_name, age_group, is_guardian=False):
         user = get_user_model().objects.create_user(username=username)
         return ForgerProfile.objects.create(
             user=user,
             display_name=display_name,
             age_group=age_group,
+            is_guardian=is_guardian,
         )
 
     def create_assignment(
@@ -86,6 +89,29 @@ class ForgeServiceTests(TestCase):
         )
         return mission
 
+    def earn_stars(self, amount=10, astral_light=6):
+        assignment = self.create_assignment(
+            child_stars=amount,
+            child_light=astral_light,
+        )
+        return complete_mission_assignment(
+            assignment=assignment,
+            recorded_by=self.child,
+            completed_at=timezone.make_aware(datetime(2026, 8, 11, 9, 0)),
+        )
+
+    def create_reward_redemption(self, star_cost=4):
+        reward = Reward.objects.create(
+            created_by=self.guardian,
+            title=f"Reward {star_cost}",
+            star_cost=star_cost,
+        )
+        return request_reward_redemption(
+            reward=reward,
+            forger=self.child,
+            requested_by=self.child,
+        )
+
     def test_assign_mission_to_forger_creates_assignment(self):
         mission = self.create_mission_with_child_reward()
 
@@ -109,6 +135,16 @@ class ForgeServiceTests(TestCase):
                 mission=mission,
                 forger=self.child,
                 assigned_by=self.guardian,
+            )
+
+    def test_assign_mission_requires_guardian_assigner(self):
+        mission = self.create_mission_with_child_reward()
+
+        with self.assertRaises(ValidationError):
+            assign_mission_to_forger(
+                mission=mission,
+                forger=self.child,
+                assigned_by=self.child,
             )
 
     def test_assign_mission_requires_age_reward(self):
@@ -237,27 +273,12 @@ class ForgeServiceTests(TestCase):
             )
 
     def test_redeem_reward_spends_stars_without_changing_astral_light(self):
-        assignment = self.create_assignment(child_stars=10, child_light=6)
-        completed_at = timezone.make_aware(datetime(2026, 8, 11, 9, 0))
-        complete_mission_assignment(
-            assignment=assignment,
-            recorded_by=self.child,
-            completed_at=completed_at,
-        )
-        reward = Reward.objects.create(
-            created_by=self.guardian,
-            title="Screen time",
-            star_cost=4,
-        )
-        redemption = request_reward_redemption(
-            reward=reward,
-            forger=self.child,
-            requested_by=self.child,
-        )
+        self.earn_stars(amount=10, astral_light=6)
+        redemption = self.create_reward_redemption(star_cost=4)
 
         redeemed = redeem_reward(redemption=redemption, approved_by=self.guardian)
 
-        self.assertEqual(redeemed.status, RewardRedemption.Status.APPROVED)
+        self.assertEqual(redeemed.status, RewardRedemption.Status.REDEEMED)
         self.assertEqual(get_star_balance(self.child), 6)
         self.assertEqual(get_astral_light_total(self.child), 6)
         self.assertEqual(
@@ -273,16 +294,69 @@ class ForgeServiceTests(TestCase):
         )
 
     def test_redeem_reward_requires_enough_stars(self):
-        reward = Reward.objects.create(
-            created_by=self.guardian,
-            title="Movie night",
-            star_cost=5,
-        )
-        redemption = request_reward_redemption(
-            reward=reward,
-            forger=self.child,
-            requested_by=self.child,
-        )
+        redemption = self.create_reward_redemption(star_cost=5)
 
         with self.assertRaises(ValidationError):
             redeem_reward(redemption=redemption, approved_by=self.guardian)
+
+    def test_redeem_reward_cannot_spend_stars_twice(self):
+        self.earn_stars(amount=10)
+        redemption = self.create_reward_redemption(star_cost=4)
+
+        redeem_reward(redemption=redemption, approved_by=self.guardian)
+
+        with self.assertRaises(ValidationError):
+            redeem_reward(redemption=redemption, approved_by=self.guardian)
+
+        self.assertEqual(get_star_balance(self.child), 6)
+        self.assertEqual(
+            StarLedgerEntry.objects.filter(
+                entry_type=StarLedgerEntry.EntryType.SPENT
+            ).count(),
+            1,
+        )
+
+    def test_redeem_reward_can_fulfill_immediately(self):
+        self.earn_stars(amount=10)
+        redemption = self.create_reward_redemption(star_cost=4)
+
+        redeemed = redeem_reward(
+            redemption=redemption,
+            approved_by=self.guardian,
+            fulfilled=True,
+        )
+
+        self.assertEqual(redeemed.status, RewardRedemption.Status.FULFILLED)
+        self.assertIsNotNone(redeemed.fulfilled_at)
+        self.assertEqual(get_star_balance(self.child), 6)
+
+    def test_reject_reward_redemption_does_not_spend_stars(self):
+        self.earn_stars(amount=10)
+        redemption = self.create_reward_redemption(star_cost=4)
+
+        rejected = reject_reward_redemption(
+            redemption=redemption,
+            approved_by=self.guardian,
+        )
+
+        self.assertEqual(rejected.status, RewardRedemption.Status.REJECTED)
+        self.assertEqual(rejected.approved_by, self.guardian)
+        self.assertIsNotNone(rejected.resolved_at)
+        self.assertIsNone(rejected.forge_event)
+        self.assertEqual(get_star_balance(self.child), 10)
+        self.assertFalse(
+            StarLedgerEntry.objects.filter(
+                entry_type=StarLedgerEntry.EntryType.SPENT
+            ).exists()
+        )
+
+    def test_reject_reward_redemption_requires_requested_status(self):
+        self.earn_stars(amount=10)
+        redemption = self.create_reward_redemption(star_cost=4)
+        redeem_reward(redemption=redemption, approved_by=self.guardian)
+
+        with self.assertRaises(ValidationError):
+            reject_reward_redemption(
+                redemption=redemption,
+                approved_by=self.guardian,
+            )

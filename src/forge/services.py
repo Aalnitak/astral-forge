@@ -48,6 +48,7 @@ def assign_mission_to_forger(
     _validate_mission_can_be_assigned(
         mission=mission,
         forger=forger,
+        assigned_by=assigned_by,
         starts_on=starts_on,
         ends_on=ends_on,
     )
@@ -139,10 +140,7 @@ def redeem_reward(redemption, approved_by=None, fulfilled=False, notes=""):
     if redemption.forge_event_id:
         raise ValidationError("This reward redemption has already spent stars.")
 
-    if redemption.status not in {
-        RewardRedemption.Status.REQUESTED,
-        RewardRedemption.Status.APPROVED,
-    }:
+    if redemption.status != RewardRedemption.Status.REQUESTED:
         raise ValidationError("This reward redemption cannot be redeemed.")
 
     if get_star_balance(redemption.forger) < redemption.star_cost:
@@ -168,7 +166,7 @@ def redeem_reward(redemption, approved_by=None, fulfilled=False, notes=""):
     redemption.status = (
         RewardRedemption.Status.FULFILLED
         if fulfilled
-        else RewardRedemption.Status.APPROVED
+        else RewardRedemption.Status.REDEEMED
     )
     if fulfilled:
         redemption.fulfilled_at = redemption.fulfilled_at or occurred_at
@@ -179,6 +177,31 @@ def redeem_reward(redemption, approved_by=None, fulfilled=False, notes=""):
             "resolved_at",
             "status",
             "fulfilled_at",
+            "updated_at",
+        ]
+    )
+
+    return redemption
+
+
+@transaction.atomic
+def reject_reward_redemption(redemption, approved_by=None, notes=""):
+    redemption = RewardRedemption.objects.select_for_update().get(pk=redemption.pk)
+
+    if redemption.status != RewardRedemption.Status.REQUESTED:
+        raise ValidationError("This reward redemption cannot be rejected.")
+
+    redemption.approved_by = approved_by or redemption.approved_by
+    redemption.resolved_at = redemption.resolved_at or timezone.now()
+    if notes:
+        redemption.notes = notes
+    redemption.status = RewardRedemption.Status.REJECTED
+    redemption.save(
+        update_fields=[
+            "approved_by",
+            "resolved_at",
+            "notes",
+            "status",
             "updated_at",
         ]
     )
@@ -200,9 +223,12 @@ def _validate_assignment_can_be_completed(assignment, completed_on):
         raise ValidationError("This mission assignment has ended.")
 
 
-def _validate_mission_can_be_assigned(mission, forger, starts_on, ends_on):
+def _validate_mission_can_be_assigned(mission, forger, assigned_by, starts_on, ends_on):
     if mission.status != Mission.Status.ACTIVE:
         raise ValidationError("This mission is not active.")
+
+    if not assigned_by or not assigned_by.is_guardian:
+        raise ValidationError("Only guardians can assign missions.")
 
     if not forger.age_group:
         raise ValidationError("This forger does not have an age group.")
