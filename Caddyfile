@@ -1,12 +1,22 @@
-localhost {
-    tls internal 
+(django_app) {
     encode gzip zstd
+
     handle_path /static/* {
         root * /app/staticfiles
         file_server
     }
-    reverse_proxy web:8000 {
+
+    reverse_proxy web:80 {
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
     }
+}
+
+http://localhost, http://127.0.0.1, http://192.168.100.16, http://forja.local, http://alnitak.local {
+    import django_app
+}
+
+https://localhost {
+    tls internal
+    import django_app
 }
