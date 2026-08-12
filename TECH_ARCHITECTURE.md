@@ -216,12 +216,15 @@ earning progress, and redeeming rewards.
 
 Initial domain concepts:
 
-- `Forger`: the product-facing profile for a user.
-- `Family`: a group or household containing multiple forgers.
+- `ForgerProfile`: the product-facing profile for a Django user.
+- `Family`: the single family using the application.
 - `FamilyMembership`: relationship between a forger and a family, including
-  role or permissions.
-- `Mission`: a task or activity that can be assigned and completed.
-- `MissionCompletion`: record that a forger completed a mission.
+  role and membership status.
+- `Mission`: a global task definition.
+- `MissionAgeReward`: age-specific availability and reward values for a
+  mission.
+- `MissionAssignment`: explicit assignment of a mission to a forger.
+- `MissionCompletion`: record that a forger completed an assignment.
 - `ForgeEvent`: durable event created from meaningful progress actions.
 - `StarLedgerEntry`: spendable currency movement.
 - `AstralLightLedgerEntry`: permanent progress movement.
@@ -260,6 +263,436 @@ Decision: mission completion creates historical progress records. Star balance
 and Astral Light totals must be traceable back to durable records.
 
 ## Modeling Principles
+
+## Implemented Model Decisions
+
+### `forgers.ForgerProfile`
+
+Decision: use Django's configured user model for authentication and create a
+separate `ForgerProfile` for product identity.
+
+Fields:
+
+- `user`: one-to-one relationship with `settings.AUTH_USER_MODEL`;
+- `display_name`: product-facing name;
+- `age_group`: optional classification for child, teen, or adult;
+- `created_at`;
+- `updated_at`.
+
+Reasoning: this keeps authentication conventional while allowing the application
+to use "forger" as its product-facing identity.
+
+### `families.Family`
+
+Decision: represent households or groups with a `Family` model.
+
+Fields:
+
+- `name`;
+- `created_by`: protected relationship to the creating `ForgerProfile`;
+- `created_at`;
+- `updated_at`.
+
+Reasoning: families are first-class in the product vision and will later own
+mission assignment, reward approval, and guardian/member relationships.
+
+### `families.FamilyMembership`
+
+Decision: represent family participation through an explicit membership model.
+
+Fields:
+
+- `family`;
+- `forger`;
+- `role`: `guardian` or `member`;
+- `status`: `active`, `invited`, or `removed`;
+- `joined_at`;
+- `updated_at`.
+
+Constraint:
+
+- one membership record per family and forger.
+
+Reasoning: an explicit membership model gives us a stable place to add
+permissions, invitations, approval rules, and family-specific settings later.
+
+### `missions.Mission`
+
+Decision: represent reusable global task definitions with a `Mission` model.
+
+The application is intended for one family only, so missions do not need a
+family relationship. A mission belongs to the shared mission catalog. If a
+forger needs that mission, the mission is assigned through `MissionAssignment`.
+
+Fields:
+
+- `created_by`: forger who created the mission;
+- `title`;
+- `description`;
+- `cadence`: `one_time`, `daily`, or `weekly`;
+- `status`: `active` or `archived`;
+- `created_at`;
+- `updated_at`.
+
+Reasoning: this keeps the first mission model useful as a reusable catalog of
+one-time and simple recurring habits without introducing a complex recurrence
+engine too early.
+
+### `missions.MissionAgeReward`
+
+Decision: represent mission availability and rewards per age group with a
+separate `MissionAgeReward` model.
+
+Fields:
+
+- `mission`;
+- `age_group`: `child`, `teen`, or `adult`;
+- `star_value`: spendable reward value for that age group;
+- `astral_light_value`: permanent progress value for that age group;
+- `is_active`;
+- `created_at`;
+- `updated_at`.
+
+Constraints:
+
+- one reward row per mission and age group;
+- `star_value` must be non-negative;
+- `astral_light_value` must be non-negative.
+
+Reasoning: the same mission can represent different effort depending on the
+forger's age group. A child and an adult can complete the same mission but earn
+different stars and different Astral Light. A mission is available to an age
+group when it has an active `MissionAgeReward` row for that age group.
+
+### `missions.MissionAssignment`
+
+Decision: assign missions to forgers through a separate `MissionAssignment`
+model.
+
+Fields:
+
+- `mission`;
+- `forger`: forger who should complete the mission;
+- `assigned_by`: forger who assigned the mission;
+- `starts_on`;
+- `ends_on`;
+- `status`: `active`, `paused`, or `archived`;
+- `created_at`;
+- `updated_at`.
+
+Constraint:
+
+- one active assignment per mission and forger.
+
+Reasoning: this separates the reusable mission definition from the personal
+work a forger is expected to complete. One mission can be assigned to many
+forgers, and each forger has their own assignment record for that mission. It
+also gives the application a clear place to pause, archive, or time-limit
+assignments.
+
+### `missions.MissionCompletion`
+
+Decision: represent completed mission instances with a separate
+`MissionCompletion` model.
+
+Fields:
+
+- `assignment`;
+- `recorded_by`: forger who recorded the completion;
+- `completed_at`;
+- `completed_on`;
+- `status`: `pending`, `approved`, or `rejected`;
+- `notes`;
+- `created_at`;
+- `updated_at`.
+
+Constraint:
+
+- one completion record per assignment and calendar day.
+
+Reasoning: mission completions must be durable records because they are the
+input for forge events, star ledger entries, and Astral Light ledger entries.
+The status field leaves room for family approval flows without requiring that
+approval workflow on day one.
+
+Daily completion check:
+
+```text
+Does MissionCompletion exist for this MissionAssignment and today's date?
+```
+
+Because `MissionAssignment` already identifies both the mission and the forger,
+`MissionCompletion` should point to the assignment instead of duplicating mission
+and forger fields.
+
+### `forge.ForgeEvent`
+
+Decision: represent meaningful progress actions with a durable `ForgeEvent`.
+
+Fields:
+
+- `forger`;
+- `event_type`: `mission_completed`, `reward_redeemed`, or
+  `manual_adjustment`;
+- `mission_completion`: optional one-to-one source completion;
+- `occurred_at`;
+- `notes`;
+- `created_at`.
+
+Reasoning: forge events are the narrative and technical bridge between user
+actions and ledger entries. A mission completion can create one forge event,
+which can then create star and Astral Light ledger entries.
+
+### `forge.StarLedgerEntry`
+
+Decision: represent spendable star balance through signed ledger entries.
+
+Fields:
+
+- `forger`;
+- `forge_event`;
+- `entry_type`: `earned`, `spent`, or `adjustment`;
+- `amount`;
+- `created_at`.
+
+Constraint:
+
+- `amount` cannot be zero.
+
+Reasoning: stars are spendable, so the ledger must support both positive and
+negative movement. Current star balance should be derived from the sum of a
+forger's star ledger entries or cached from that source of truth.
+
+### `forge.AstralLightLedgerEntry`
+
+Decision: represent permanent Astral Light through positive ledger entries.
+
+Fields:
+
+- `forger`;
+- `forge_event`;
+- `entry_type`: `earned` or `adjustment`;
+- `amount`;
+- `created_at`.
+
+Constraint:
+
+- `amount` must be positive.
+
+Reasoning: Astral Light represents permanent growth. It can increase, but it
+must not be spent or reduced by reward redemption.
+
+### `rewards.Reward`
+
+Decision: represent redeemable rewards with a global `Reward` model.
+
+The application is intended for one family only, so rewards do not need a family
+relationship. Rewards belong to the shared reward catalog.
+
+Fields:
+
+- `created_by`: forger who created the reward;
+- `title`;
+- `description`;
+- `star_cost`;
+- `requires_approval`;
+- `status`: `active` or `archived`;
+- `created_at`;
+- `updated_at`.
+
+Constraint:
+
+- `star_cost` must be positive.
+
+Reasoning: rewards are the spendable side of the economy. They should be simple
+catalog entries that can be requested by any eligible forger.
+
+### `rewards.RewardRedemption`
+
+Decision: represent reward requests and fulfillment with a separate
+`RewardRedemption` model.
+
+Fields:
+
+- `reward`;
+- `forger`: forger receiving the reward;
+- `requested_by`: forger who requested the redemption;
+- `approved_by`: optional forger who approved the redemption;
+- `forge_event`: optional one-to-one link to the spending event;
+- `star_cost`: snapshot of the reward cost at redemption time;
+- `status`: `requested`, `approved`, `rejected`, `fulfilled`, or `canceled`;
+- `requested_at`;
+- `resolved_at`;
+- `fulfilled_at`;
+- `notes`;
+- `created_at`;
+- `updated_at`.
+
+Constraint:
+
+- `star_cost` must be positive.
+
+Reasoning: redemptions need their own lifecycle because requesting, approving,
+spending stars, and fulfilling the reward may happen at different moments. The
+redemption stores a star cost snapshot so historical records remain accurate if
+the reward catalog changes later.
+
+Reward spending flow:
+
+```text
+RewardRedemption approved or fulfilled
+        |
+        v
+ForgeEvent(event_type="reward_redeemed")
+        |
+        v
+StarLedgerEntry(amount=-reward_redemption.star_cost)
+```
+
+Reward spending must not create an Astral Light ledger entry.
+
+## Service Layer Decisions
+
+Decision: domain workflows that create forge events or ledger entries must go
+through `forge.services`.
+
+Reasoning: mission completion and reward redemption both affect multiple
+tables. Keeping these workflows in service functions makes it easier to enforce
+transactions, validation, balance checks, and ledger consistency.
+
+### `forge.services.complete_mission_assignment`
+
+Decision: completing an assigned mission creates the completion, forge event,
+star ledger entry, and Astral Light ledger entry in one database transaction.
+
+Flow:
+
+```text
+MissionAssignment
+        |
+        v
+MissionCompletion
+        |
+        v
+ForgeEvent(event_type="mission_completed")
+        |
+        v
+StarLedgerEntry(amount=MissionAgeReward.star_value)
+AstralLightLedgerEntry(amount=MissionAgeReward.astral_light_value)
+```
+
+Validation:
+
+- the assignment must be active;
+- the mission must be active;
+- the completion date must be inside the assignment date range;
+- the forger must have an age group;
+- the mission must have an active `MissionAgeReward` for the forger's age
+  group.
+
+Cadence validation:
+
+- `one_time`: the assignment can be completed once total;
+- `daily`: the assignment can be completed once per calendar date;
+- `weekly`: the assignment can be completed once per ISO-style week, Monday
+  through Sunday.
+
+Assignment date range:
+
+- `starts_on` and `ends_on` define when an assignment is valid;
+- they do not define the recurrence rule;
+- recurrence is controlled by `Mission.cadence`.
+
+### `forge.services.assign_mission_to_forger`
+
+Decision: assigning a mission to a forger must go through the service layer.
+
+Flow:
+
+```text
+Mission
+        |
+        v
+MissionAssignment(forger)
+```
+
+Validation:
+
+- the mission must be active;
+- the forger must have an age group;
+- the mission must have an active `MissionAgeReward` for the forger's age
+  group;
+- there must not already be an active assignment for the same mission and
+  forger;
+- `ends_on`, when present, cannot be before `starts_on`.
+
+Reasoning: invalid assignments should be blocked before completion time. This
+keeps the mission catalog, age eligibility rules, and forger assignments aligned.
+
+### `forge.services.request_reward_redemption`
+
+Decision: requesting a reward creates a `RewardRedemption` with a snapshot of
+the current reward cost.
+
+Validation:
+
+- the reward must be active.
+
+### `forge.services.redeem_reward`
+
+Decision: redeeming a reward creates the spending forge event and negative star
+ledger entry in one database transaction.
+
+Flow:
+
+```text
+RewardRedemption
+        |
+        v
+ForgeEvent(event_type="reward_redeemed")
+        |
+        v
+StarLedgerEntry(amount=-RewardRedemption.star_cost)
+```
+
+Validation:
+
+- the redemption must not already have spent stars;
+- the redemption must be in a redeemable status;
+- the forger must have enough available stars.
+
+### Balance Helpers
+
+Decision: current balances are derived from ledgers.
+
+- `get_star_balance(forger)` sums `StarLedgerEntry.amount`;
+- `get_astral_light_total(forger)` sums `AstralLightLedgerEntry.amount`.
+
+## Admin Boundary
+
+Decision: Django admin is an inspection and catalog-management surface, not the
+main operational interface.
+
+Editable in admin:
+
+- mission catalog records;
+- mission age rewards;
+- reward catalog records;
+- forger and family setup records.
+
+Read-only in admin:
+
+- mission assignments;
+- mission completions;
+- forge events;
+- star ledger entries;
+- Astral Light ledger entries;
+- reward redemptions.
+
+Reasoning: assignments, completions, redemptions, forge events, and ledger
+entries must be created through service-layer workflows so validation,
+transactions, cadence rules, balance checks, and ledger consistency are always
+enforced. The future guardian UI will own these operational flows.
 
 ### Preserve History
 
@@ -363,12 +796,8 @@ guardians, mission assignment, and reward approval.
 
 These decisions still need to be made:
 
-- whether to use Django's default `User` model or define a custom user model
-  early;
-- whether `forgers` should be named `accounts` for convention or kept as
-  `forgers` for domain clarity;
 - whether initial rank logic belongs in `forge` or a separate `progression`
   app;
-- how detailed mission recurrence should be in the first version;
+- how detailed mission recurrence should become after the first version;
 - whether reward redemption requires guardian approval in all family contexts
   or only for younger members.

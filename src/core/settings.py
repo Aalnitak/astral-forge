@@ -41,10 +41,10 @@ ALLOWED_HOSTS = [
 CSRF_TRUSTED_ORIGINS = [
     o for o in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o
 ]
-USE_X_FORWARDED_HOST = True if os.getenv("LOCAL_DEVELOPMENT", None) else False
+USE_X_FORWARDED_HOST = True if os.getenv("DJANGO_DEBUG", None) else False
 SECURE_PROXY_SSL_HEADER = (
     ("HTTP_X_FORWARDED_PROTO", "https")
-    if os.getenv("LOCAL_DEVELOPMENT", None)
+    if os.getenv("DJANGO_DEBUG", None)
     else None
 )
 
@@ -64,6 +64,11 @@ INSTALLED_APPS = [
     "django_htmx_base",
     # Internal
     "core",
+    "forgers",
+    "families",
+    "missions",
+    "forge",
+    "rewards",
 ]
 
 
@@ -219,6 +224,9 @@ USE_TZ = True
 # Auth / Primary Key
 # ----------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "home"
 
 # ----------------------------
 # Pagination
