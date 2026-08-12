@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar sesion{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-neutral text-neutral-content">
+    <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center px-6 py-16">
+      <div class="w-full">
+        <h1 class="text-3xl font-bold">Iniciar sesion</h1>
+        <p class="mt-3 text-neutral-content/70">
+          Entra para continuar construyendo tu firmamento.
+        </p>
+
+        {% if form.errors %}
+          <div class="alert alert-error mt-6">
+            <span>Usuario o contrasena incorrectos.</span>
+          </div>
+        {% endif %}
+
+        <form class="mt-8 space-y-5" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
+
+          <label class="form-control w-full">
+            <span class="label-text text-neutral-content/80">Usuario</span>
+            <input
+              class="input input-bordered mt-2 w-full bg-base-100 text-base-content"
+              type="text"
+              name="{{ form.username.html_name }}"
+              autocomplete="username"
+              autofocus
+              required
+            >
+          </label>
+
+          <label class="form-control w-full">
+            <span class="label-text text-neutral-content/80">Contrasena</span>
+            <input
+              class="input input-bordered mt-2 w-full bg-base-100 text-base-content"
+              type="password"
+              name="{{ form.password.html_name }}"
+              autocomplete="current-password"
+              required
+            >
+          </label>
+
+          <button class="btn btn-primary w-full" type="submit">
+            Entrar
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+{% endblock %}

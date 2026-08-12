@@ -1,38 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Home{% endblock %}
-{% block content %}
-  <div class="px-6 pt-10 text-3xl font-semibold">Welcome to the Home Page</div>
 
-  <div class="px-6 mt-4">
-    This is a simple Django app template with HTMX and Daisy UI. Use the button below to test an HTMX POST request.
-    <div class="my-2 flex gap-4">
-      <button
-        class="btn btn-primary"
-        id="ping-btn"
-        hx-post="{% url 'ping' %}"
-        hx-target="#ping-result"
-      >
-        Ping (HTMX POST)
-      </button>
-      <div id="ping-result" class="flex gap-2 items-center">
-        Click the button to ping
+{% block title %}Forja Astral{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-neutral text-neutral-content">
+    <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl flex-col justify-center px-6 py-16">
+      <div class="max-w-2xl">
+        <p class="mb-4 text-sm font-semibold uppercase tracking-wide text-primary">
+          Forja Astral
+        </p>
+        <h1 class="text-4xl font-bold leading-tight md:text-6xl">
+          Cada accion forja una estrella.
+        </h1>
+        <p class="mt-6 text-lg leading-8 text-neutral-content/80">
+          Un espacio familiar para transformar misiones diarias en estrellas,
+          Luz Astral y progreso visible.
+        </p>
+
+        <div class="mt-8 flex flex-wrap gap-3">
+          {% if request.user.is_authenticated %}
+            <a class="btn btn-primary" href="/admin/" hx-boost="false">
+              Abrir administracion
+            </a>
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button class="btn btn-outline btn-primary" type="submit">
+                Cerrar sesion
+              </button>
+            </form>
+          {% else %}
+            <a class="btn btn-primary" href="{% url 'login' %}">Iniciar sesion</a>
+          {% endif %}
+        </div>
       </div>
     </div>
-
-    <p>Database: {{ database|default:"Not configured" }}</p>
-    
-    <div class="flex my-2 gap-4">
-      <button
-        id="db-ping-btn"
-        class="btn btn-secondary"
-        hx-get="{% url 'db_ping' %}"
-        hx-target="#db-ping-result"
-      >
-        Ping Database (HTMX GET)
-      </button>
-
-      <div id="db-ping-result" class="flex gap-2 items-center">Click the button to ping the database</div>
-
-    </div>
-  </div>
+  </section>
 {% endblock %}

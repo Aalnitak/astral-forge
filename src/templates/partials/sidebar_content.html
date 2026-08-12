@@ -8,21 +8,11 @@
         </svg>
       </label>
       <ul class="menu menu-lg w-full">
-        <li class="menu-title">Navigate to</li>
-        <li><a href="#1" class="menu-active">Sidebar Item 1</a></li>
-        <li>
-          <details>
-            <summary>
-              <a href="#2">
-                Sidebar Item 2
-              </a>
-            </summary>
-            <ul>
-              <li><a href="#2-1">Sub-item 1</a></li>
-              <li><a href="#2-2">Sub-item 2</a></li>
-            </ul>
-          </details>
-        </li>
+        <li class="menu-title">Navegacion</li>
+        <li><a href="{% url 'home' %}">Inicio</a></li>
+        {% if request.user.is_staff %}
+          <li><a href="/admin/" hx-boost="false">Administracion</a></li>
+        {% endif %}
       </ul>
     </div>
     <ul class="menu w-full">
@@ -30,13 +20,30 @@
         <a class="flex gap-4">
           <div class="avatar">
             <div class="rounded-full ring-2 ring-offset-base-100 ring-offset-2 ring-primary">
-              <img src="https://placehold.co/20" alt="">
+              <div class="flex size-8 items-center justify-center rounded-full bg-primary text-primary-content">
+                {% if request.user.is_authenticated %}{{ request.user.username|first|upper }}{% else %}?{% endif %}
+              </div>
             </div>
           </div>
-          <span>john.doe@example.com</span>
+          <span>
+            {% if request.user.is_authenticated %}
+              {{ request.user.username }}
+            {% else %}
+              Invitado
+            {% endif %}
+          </span>
         </a>
         <ul>
-          <li><a href="#3-1">Log Out</a></li>
+          {% if request.user.is_authenticated %}
+            <li>
+              <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit">Cerrar sesion</button>
+              </form>
+            </li>
+          {% else %}
+            <li><a href="{% url 'login' %}">Iniciar sesion</a></li>
+          {% endif %}
         </ul>
       </li>
     </ul>

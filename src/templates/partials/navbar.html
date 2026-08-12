@@ -7,9 +7,17 @@
     </label>
     {% include "partials/breadcrumbs.html" with uri_path=uri_path %}
   </div>
-  <div class="">
-    <a class="">
-      <img src="https://placehold.co/160x32" alt="">
+  <div class="flex items-center gap-4">
+    <a class="font-semibold" href="{% url 'home' %}">
+      Forja Astral
     </a>
+    {% if request.user.is_authenticated %}
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline" type="submit">Salir</button>
+      </form>
+    {% else %}
+      <a class="btn btn-sm btn-primary" href="{% url 'login' %}">Entrar</a>
+    {% endif %}
   </div>
 </nav>

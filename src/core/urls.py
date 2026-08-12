@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 from django.db import connection
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -14,10 +15,15 @@ def health(_):
 
 @ensure_csrf_cookie
 def home(request):
+    return render(request, "home.html", {"uri_path": request.path})
+
+
+@ensure_csrf_cookie
+def test(request):
     uri_path = request.path
     return render(
         request,
-        "home.html",
+        "test.html",
         {
             "database": settings.DATABASE_URL.split("/")[-1] or "Default (SQLite)",
             "uri_path": uri_path,
@@ -51,8 +57,17 @@ def db_ping(request):
 
 
 urlpatterns = [
+    path("", home, name="home"),
+    path("test/", test, name="test"),
     # Admin site
     path("admin/", admin.site.urls),
+    # Auth
+    path(
+        "login/",
+        auth_views.LoginView.as_view(template_name="registration/login.html"),
+        name="login",
+    ),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     # Global endpoints
     path("health/", health, name="health"),
     path("db-ping/", db_ping, name="db_ping"),
