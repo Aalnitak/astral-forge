@@ -16,8 +16,11 @@
         {% endif %}
         {% if request_forger and request_forger.is_guardian %}
           <li><a href="{% url 'guardian:dashboard' %}">Panel guardian</a></li>
+          <li><a href="{% url 'guardian:family' %}">Familia</a></li>
           <li><a href="{% url 'guardian:missions' %}">Misiones</a></li>
+          <li><a href="{% url 'guardian:mission_catalog' %}">Catalogo de misiones</a></li>
           <li><a href="{% url 'guardian:rewards' %}">Recompensas</a></li>
+          <li><a href="{% url 'guardian:reward_catalog' %}">Catalogo de recompensas</a></li>
         {% endif %}
         {% if request.user.is_staff %}
           <li><a href="/admin/" hx-boost="false">Administracion</a></li>

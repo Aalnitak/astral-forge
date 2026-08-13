@@ -603,6 +603,10 @@ Cadence validation:
 - `weekly`: the assignment can be completed once per ISO-style week, Monday
   through Sunday.
 
+Calendar dates are evaluated in the configured Django timezone. The default
+timezone is `America/Santiago`, because recurring family habits should reset on
+the family's local day instead of UTC.
+
 Assignment date range:
 
 - `starts_on` and `ends_on` define when an assignment is valid;
@@ -692,8 +696,8 @@ Decision: current balances are derived from ledgers.
 
 ## Admin Boundary
 
-Decision: Django admin is an inspection and catalog-management surface, not the
-main operational interface.
+Decision: Django admin is an inspection and fallback setup surface, not the main
+operational interface.
 
 Editable in admin:
 
@@ -714,7 +718,65 @@ Read-only in admin:
 Reasoning: assignments, completions, redemptions, forge events, and ledger
 entries must be created through service-layer workflows so validation,
 transactions, cadence rules, balance checks, and ledger consistency are always
-enforced. The future guardian UI will own these operational flows.
+enforced. Guardian UI owns family-facing operational flows.
+
+### Guardian Mission Catalog
+
+Decision: guardians manage the shared mission catalog from dedicated guardian UI
+routes.
+
+Routes:
+
+- `/guardian/catalog/missions/`: list catalog missions;
+- `/guardian/catalog/missions/new/`: create a mission;
+- `/guardian/catalog/missions/<id>/edit/`: edit a mission.
+
+The mission catalog form edits the `Mission` fields and the related
+`MissionAgeReward` rows together. A mission can define different star and Astral
+Light values for child, teen, and adult forgers. An active mission must have at
+least one enabled age group reward.
+
+### Guardian Reward Catalog
+
+Decision: guardians manage the shared reward catalog from dedicated guardian UI
+routes.
+
+Routes:
+
+- `/guardian/catalog/rewards/`: list catalog rewards;
+- `/guardian/catalog/rewards/new/`: create a reward;
+- `/guardian/catalog/rewards/<id>/edit/`: edit a reward.
+
+The reward catalog form edits the `Reward` fields used by future redemption
+requests: title, description, star cost, approval requirement, and status.
+Existing `RewardRedemption` records keep their own `star_cost` snapshot, so
+later catalog edits do not rewrite historical spending records.
+
+### Guardian Family Management
+
+Decision: guardians manage existing forger profiles from dedicated guardian UI
+routes.
+
+Routes:
+
+- `/guardian/family/`: list existing forger profiles;
+- `/guardian/family/forgers/new/`: create a user, forger profile, and family
+  membership;
+- `/guardian/family/forgers/<id>/edit/`: edit a forger profile;
+- `/guardian/family/forgers/<id>/delete/`: confirm and delete a forger.
+
+Family creation follows the one-family-per-app assumption. Guardians do not pick
+a family in the UI. When a new forger is created, the service layer finds the
+first `Family` record or creates a default `Familia` record, then attaches the
+new forger through `FamilyMembership`. Membership role mirrors
+`ForgerProfile.is_guardian`.
+
+Deleting a forger is a destructive guardian workflow with a confirmation page
+and POST-only final action. The service deletes the Django user, forger profile,
+family membership, assigned missions, mission completions, forge events, ledger
+entries, and reward redemptions owned by that forger. Shared catalog records
+created by that forger are retained, with nullable creator references cleared.
+The service blocks deleting the currently logged-in guardian profile.
 
 ### Preserve History
 
