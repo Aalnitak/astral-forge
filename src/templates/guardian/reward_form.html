@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-2xl px-6 py-8">
+      <div class="mb-6">
+        <a class="btn btn-ghost btn-sm" href="{% url cancel_url %}">
+          Volver
+        </a>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-6">
+          <div>
+            <h1 class="card-title text-2xl">{{ title }}</h1>
+            <p class="text-base-content/70">
+              Ajusta el costo y disponibilidad de esta recompensa.
+            </p>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-error">
+              <span>{{ form.non_field_errors|join:" " }}</span>
+            </div>
+          {% endif %}
+
+          <form class="space-y-6" method="post">
+            {% csrf_token %}
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.title.label }}</span>
+              <input
+                class="input input-bordered mt-2 w-full"
+                name="{{ form.title.html_name }}"
+                type="text"
+                value="{{ form.title.value|default:'' }}"
+                required
+              >
+              {% if form.title.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.title.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.description.label }}</span>
+              <textarea
+                class="textarea textarea-bordered mt-2 w-full"
+                name="{{ form.description.html_name }}"
+                rows="3"
+              >{{ form.description.value|default:'' }}</textarea>
+              {% if form.description.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.description.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <label class="form-control w-full">
+                <span class="label-text">{{ form.star_cost.label }}</span>
+                <input
+                  class="input input-bordered mt-2 w-full"
+                  min="1"
+                  name="{{ form.star_cost.html_name }}"
+                  type="number"
+                  value="{{ form.star_cost.value|default:'1' }}"
+                  required
+                >
+                {% if form.star_cost.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.star_cost.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+
+              <label class="form-control w-full">
+                <span class="label-text">{{ form.status.label }}</span>
+                <select class="select select-bordered mt-2 w-full" name="{{ form.status.html_name }}" required>
+                  {% for value, label in form.status.field.choices %}
+                    <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+                {% if form.status.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.status.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+            </div>
+
+            <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 p-4">
+              <input
+                class="checkbox checkbox-secondary"
+                type="checkbox"
+                name="{{ form.requires_approval.html_name }}"
+                {% if form.requires_approval.value %}checked{% endif %}
+              >
+              <span class="label-text font-medium">{{ form.requires_approval.label }}</span>
+            </label>
+            {% if form.requires_approval.errors %}
+              <span class="text-sm text-error">{{ form.requires_approval.errors|join:" " }}</span>
+            {% endif %}
+
+            <div class="card-actions justify-end">
+              <a class="btn btn-ghost" href="{% url cancel_url %}">
+                Cancelar
+              </a>
+              <button class="btn btn-secondary" type="submit">
+                {{ submit_label }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

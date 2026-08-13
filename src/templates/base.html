@@ -25,21 +25,34 @@
     </head>
     <body hx-boost="true" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <!-- Global toasts / messages container -->
-        <div id="toasts" class="toast toast-end toast-top z-50"></div>
+        <div id="toasts" class="mt-[72px] toast toast-end toast-top z-50">
+            {% if messages %}
+                {% for message in messages %}
+                    <div
+                        class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} flex justify-between shadow-lg"
+                        data-ttl="4000"
+                        role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
+                        aria-live="{% if message.tags == 'error' %}assertive{% else %}polite{% endif %}"
+                        aria-atomic="true"
+                    >
+                        <span>{{ message }}</span>
+                        <button
+                            class="btn btn-ghost btn-xs btn-square toast-close"
+                            data-toast-close
+                            type="button"
+                            aria-label="Cerrar"
+                        >
+                            x
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
 
         <div class="drawer">
             <input id="main-sidebar" type="checkbox" class="drawer-toggle" />
             <div class="drawer-content">
                 {% include "partials/navbar.html" with uri_path=uri_path %}
-                {% if messages %}
-                    <div class="mx-auto mt-4 max-w-6xl px-6">
-                        {% for message in messages %}
-                            <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} mb-3">
-                                <span>{{ message }}</span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
                 <main id="main-content">{% block content %}{% endblock %}</main>
             </div>
             

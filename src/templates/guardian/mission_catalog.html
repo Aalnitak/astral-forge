@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Catalogo de misiones{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-6xl px-6 py-8">
+      <div class="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase text-primary">Panel guardian</p>
+          <h1 class="text-3xl font-bold">Catalogo de misiones</h1>
+          <p class="mt-2 text-base-content/70">
+            Crea misiones y ajusta las estrellas y Luz Astral por grupo de edad.
+          </p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-ghost" href="{% url 'guardian:dashboard' %}">Volver</a>
+          <a class="btn btn-outline" href="{% url 'guardian:missions' %}">Misiones activas</a>
+          <a class="btn btn-primary" href="{% url 'guardian:mission_create' %}">
+            Crear mision
+          </a>
+        </div>
+      </div>
+
+      {% if mission_cards %}
+        <div class="grid gap-5">
+          {% for card in mission_cards %}
+            <article class="card bg-base-100 shadow-sm">
+              <div class="card-body gap-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h2 class="card-title">{{ card.mission.title }}</h2>
+                      {% if card.mission.status == "active" %}
+                        <span class="badge badge-success">Activa</span>
+                      {% else %}
+                        <span class="badge badge-neutral">Archivada</span>
+                      {% endif %}
+                      <span class="badge badge-outline">{{ card.mission.get_cadence_display }}</span>
+                    </div>
+                    {% if card.mission.description %}
+                      <p class="mt-2 max-w-3xl text-sm text-base-content/70">
+                        {{ card.mission.description }}
+                      </p>
+                    {% endif %}
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="badge badge-primary">
+                      {{ card.active_assignment_count }} asignaciones activas
+                    </span>
+                    <a class="btn btn-sm btn-outline" href="{% url 'guardian:mission_edit' card.mission.id %}">
+                      Editar
+                    </a>
+                  </div>
+                </div>
+
+                <div class="grid gap-3 md:grid-cols-3">
+                  {% for row in card.age_rewards %}
+                    <div class="rounded-box bg-base-200 p-4">
+                      <div class="mb-3 flex items-center justify-between gap-3">
+                        <div class="font-medium">{{ row.label }}</div>
+                        <span class="badge badge-success badge-sm">Habilitada</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="rounded-box bg-base-100 p-3">
+                          <div class="text-xs text-base-content/60">Estrellas</div>
+                          <div class="font-bold">{{ row.reward.star_value }}</div>
+                        </div>
+                        <div class="rounded-box bg-base-100 p-3">
+                          <div class="text-xs text-base-content/60">Luz Astral</div>
+                          <div class="font-bold">{{ row.reward.astral_light_value }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  {% empty %}
+                    <div class="rounded-box border border-dashed border-base-300 p-4 text-sm text-base-content/60 md:col-span-3">
+                      No hay grupos de edad habilitados.
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-base-content/70">
+          Aun no hay misiones en el catalogo.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,9 +1,9 @@
-from datetime import timedelta
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -12,18 +12,25 @@ from django.views.decorators.http import require_POST
 
 from forge.services import assign_mission_to_forger
 from forge.services import complete_mission_assignment
+from forge.services import create_family_forger
+from forge.services import delete_family_forger
 from forge.services import get_astral_light_total
 from forge.services import get_star_balance
+from forge.services import is_assignment_completed_for_period
 from forge.services import redeem_reward
 from forge.services import reject_reward_redemption
 from forge.services import request_reward_redemption
 from forgers.models import ForgerProfile
 from guardian.decorators import guardian_required
+from guardian.forms import ForgerCreationForm
+from guardian.forms import ForgerProfileForm
+from guardian.forms import MissionCatalogForm
 from guardian.forms import MissionAssignmentForm
+from guardian.forms import RewardCatalogForm
 from guardian.forms import RewardRedemptionForm
 from missions.models import Mission
 from missions.models import MissionAssignment
-from missions.models import MissionCompletion
+from rewards.models import Reward
 from rewards.models import RewardRedemption
 
 
@@ -75,6 +82,130 @@ def dashboard(request):
 
 @login_required
 @guardian_required
+def family(request):
+    forgers = ForgerProfile.objects.select_related("user").annotate(
+        active_assignment_count=Count(
+            "mission_assignments",
+            filter=Q(mission_assignments__status=MissionAssignment.Status.ACTIVE),
+            distinct=True,
+        ),
+        open_redemption_count=Count(
+            "reward_redemptions",
+            filter=Q(
+                reward_redemptions__status__in=[
+                    RewardRedemption.Status.REQUESTED,
+                    RewardRedemption.Status.REDEEMED,
+                ]
+            ),
+            distinct=True,
+        ),
+        total_successful_redemption_count=Count(
+            "reward_redemptions",
+            filter=Q(
+                reward_redemptions__status__in=[
+                    RewardRedemption.Status.REDEEMED,
+                    RewardRedemption.Status.FULFILLED,
+                ]
+            ),
+            distinct=True,
+        ),
+    )
+
+    return render(
+        request,
+        "guardian/family.html",
+        {
+            "forgers": forgers,
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def forger_create(request):
+    form = ForgerCreationForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        create_family_forger(
+            username=form.cleaned_data["username"],
+            password=form.cleaned_data["password"],
+            display_name=form.cleaned_data["display_name"],
+            age_group=form.cleaned_data["age_group"],
+            is_guardian=form.cleaned_data["is_guardian"],
+            created_by=request.forger_profile,
+        )
+        messages.success(request, "Forjador creado correctamente.")
+        return redirect("guardian:family")
+
+    return render(
+        request,
+        "guardian/forger_create.html",
+        {
+            "form": form,
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def forger_edit(request, forger_id):
+    forger = get_object_or_404(
+        ForgerProfile.objects.select_related("user"),
+        pk=forger_id,
+    )
+    form = ForgerProfileForm(request.POST or None, instance=forger)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Forjador actualizado correctamente.")
+        return redirect("guardian:family")
+
+    return render(
+        request,
+        "guardian/forger_form.html",
+        {
+            "form": form,
+            "forger": forger,
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def forger_delete(request, forger_id):
+    forger = get_object_or_404(
+        ForgerProfile.objects.select_related("user"),
+        pk=forger_id,
+    )
+
+    if request.method == "POST":
+        try:
+            delete_family_forger(
+                forger=forger,
+                deleted_by=request.forger_profile,
+            )
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+        else:
+            messages.success(request, "Forjador eliminado correctamente.")
+        return redirect("guardian:family")
+
+    return render(
+        request,
+        "guardian/forger_confirm_delete.html",
+        {
+            "forger": forger,
+            "is_self": forger.pk == request.forger_profile.pk,
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
 def missions(request):
     active_assignments = list(
         MissionAssignment.objects.filter(
@@ -88,6 +219,85 @@ def missions(request):
         {
             "forger_cards": _build_mission_cards(active_assignments),
             "active_assignment_count": len(active_assignments),
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def mission_catalog(request):
+    missions = (
+        Mission.objects.prefetch_related("age_rewards")
+        .annotate(
+            active_assignment_count=Count(
+                "assignments",
+                filter=Q(assignments__status=MissionAssignment.Status.ACTIVE),
+            )
+        )
+        .order_by("title", "id")
+    )
+
+    return render(
+        request,
+        "guardian/mission_catalog.html",
+        {
+            "mission_cards": _build_mission_catalog_cards(missions),
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def mission_create(request):
+    form = MissionCatalogForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        mission = form.save(commit=False)
+        mission.created_by = request.forger_profile
+        mission.save()
+        form.save_age_rewards(mission)
+        messages.success(request, "Mision creada correctamente.")
+        return redirect("guardian:mission_catalog")
+
+    return render(
+        request,
+        "guardian/mission_form.html",
+        {
+            "form": form,
+            "title": "Crear mision",
+            "submit_label": "Crear mision",
+            "cancel_url": "guardian:mission_catalog",
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def mission_edit(request, mission_id):
+    mission = get_object_or_404(
+        Mission.objects.prefetch_related("age_rewards"),
+        pk=mission_id,
+    )
+    form = MissionCatalogForm(request.POST or None, instance=mission)
+
+    if request.method == "POST" and form.is_valid():
+        mission = form.save()
+        form.save_age_rewards(mission)
+        messages.success(request, "Mision actualizada correctamente.")
+        return redirect("guardian:mission_catalog")
+
+    return render(
+        request,
+        "guardian/mission_form.html",
+        {
+            "form": form,
+            "mission": mission,
+            "title": "Editar mision",
+            "submit_label": "Guardar cambios",
+            "cancel_url": "guardian:mission_catalog",
             "uri_path": request.path,
         },
     )
@@ -114,6 +324,81 @@ def rewards(request):
                     }
                 ]
             ),
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def reward_catalog(request):
+    rewards = Reward.objects.annotate(
+        open_redemption_count=Count(
+            "redemptions",
+            filter=Q(
+                redemptions__status__in=[
+                    RewardRedemption.Status.REQUESTED,
+                    RewardRedemption.Status.REDEEMED,
+                ]
+            ),
+        )
+    ).order_by("title", "id")
+
+    return render(
+        request,
+        "guardian/reward_catalog.html",
+        {
+            "reward_cards": rewards,
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def reward_create(request):
+    form = RewardCatalogForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        reward = form.save(commit=False)
+        reward.created_by = request.forger_profile
+        reward.save()
+        messages.success(request, "Recompensa creada correctamente.")
+        return redirect("guardian:reward_catalog")
+
+    return render(
+        request,
+        "guardian/reward_form.html",
+        {
+            "form": form,
+            "title": "Crear recompensa",
+            "submit_label": "Crear recompensa",
+            "cancel_url": "guardian:reward_catalog",
+            "uri_path": request.path,
+        },
+    )
+
+
+@login_required
+@guardian_required
+def reward_edit(request, reward_id):
+    reward = get_object_or_404(Reward, pk=reward_id)
+    form = RewardCatalogForm(request.POST or None, instance=reward)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Recompensa actualizada correctamente.")
+        return redirect("guardian:reward_catalog")
+
+    return render(
+        request,
+        "guardian/reward_form.html",
+        {
+            "form": form,
+            "reward": reward,
+            "title": "Editar recompensa",
+            "submit_label": "Guardar cambios",
+            "cancel_url": "guardian:reward_catalog",
             "uri_path": request.path,
         },
     )
@@ -260,23 +545,6 @@ def fulfill_redemption(request, redemption_id):
     return redirect("guardian:rewards")
 
 
-def _is_assignment_completed_for_period(assignment, today):
-    completions = MissionCompletion.objects.filter(assignment=assignment)
-
-    if assignment.mission.cadence == assignment.mission.Cadence.ONE_TIME:
-        return completions.exists()
-
-    if assignment.mission.cadence == assignment.mission.Cadence.DAILY:
-        return completions.filter(completed_on=today).exists()
-
-    if assignment.mission.cadence == assignment.mission.Cadence.WEEKLY:
-        week_start = today - timedelta(days=today.weekday())
-        week_end = week_start + timedelta(days=6)
-        return completions.filter(completed_on__range=(week_start, week_end)).exists()
-
-    return False
-
-
 def _get_redemptions():
     return RewardRedemption.objects.select_related(
         "forger",
@@ -304,7 +572,7 @@ def _build_mission_cards(active_assignments):
     assignment_rows = [
         {
             "assignment": assignment,
-            "is_completed_for_period": _is_assignment_completed_for_period(
+            "is_completed_for_period": is_assignment_completed_for_period(
                 assignment,
                 today,
             ),
@@ -329,6 +597,32 @@ def _build_mission_cards(active_assignments):
         )
 
     return mission_cards
+
+
+def _build_mission_catalog_cards(missions):
+    cards = []
+
+    for mission in missions:
+        reward_by_age_group = {
+            reward.age_group: reward for reward in mission.age_rewards.all()
+        }
+        cards.append(
+            {
+                "mission": mission,
+                "active_assignment_count": mission.active_assignment_count,
+                "age_rewards": [
+                    {
+                        "label": label,
+                        "reward": reward_by_age_group.get(age_group),
+                    }
+                    for age_group, label in ForgerProfile.AgeGroup.choices
+                    if reward_by_age_group.get(age_group)
+                    and reward_by_age_group[age_group].is_active
+                ],
+            }
+        )
+
+    return cards
 
 
 def _build_reward_cards(redemptions):

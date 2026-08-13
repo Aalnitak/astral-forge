@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-3xl px-6 py-8">
+      <div class="mb-6">
+        <a class="btn btn-ghost btn-sm" href="{% url cancel_url %}">
+          Volver
+        </a>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-6">
+          <div>
+            <h1 class="card-title text-2xl">{{ title }}</h1>
+            <p class="text-base-content/70">
+              Define la recurrencia y los valores que recibira cada grupo de edad.
+            </p>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-error">
+              <span>{{ form.non_field_errors|join:" " }}</span>
+            </div>
+          {% endif %}
+
+          <form class="space-y-6" method="post">
+            {% csrf_token %}
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <label class="form-control w-full md:col-span-2">
+                <span class="label-text">{{ form.title.label }}</span>
+                <input
+                  class="input input-bordered mt-2 w-full"
+                  name="{{ form.title.html_name }}"
+                  type="text"
+                  value="{{ form.title.value|default:'' }}"
+                  required
+                >
+                {% if form.title.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.title.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+
+              <label class="form-control w-full md:col-span-2">
+                <span class="label-text">{{ form.description.label }}</span>
+                <textarea
+                  class="textarea textarea-bordered mt-2 w-full"
+                  name="{{ form.description.html_name }}"
+                  rows="3"
+                >{{ form.description.value|default:'' }}</textarea>
+                {% if form.description.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.description.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+
+              <label class="form-control w-full">
+                <span class="label-text">{{ form.cadence.label }}</span>
+                <select class="select select-bordered mt-2 w-full" name="{{ form.cadence.html_name }}" required>
+                  {% for value, label in form.cadence.field.choices %}
+                    <option value="{{ value }}" {% if form.cadence.value == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+                {% if form.cadence.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.cadence.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+
+              <label class="form-control w-full">
+                <span class="label-text">{{ form.status.label }}</span>
+                <select class="select select-bordered mt-2 w-full" name="{{ form.status.html_name }}" required>
+                  {% for value, label in form.status.field.choices %}
+                    <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+                {% if form.status.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.status.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+            </div>
+
+            <div>
+              <h2 class="mb-3 text-sm font-semibold uppercase text-base-content/60">
+                Recompensas por edad
+              </h2>
+              <div class="grid gap-4">
+                {% for row in form.age_reward_rows %}
+                  <div class="rounded-box border border-base-300 p-4">
+                    <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_8rem_8rem] md:items-end">
+                      <label class="label cursor-pointer justify-start gap-3">
+                        <input
+                          class="checkbox checkbox-primary"
+                          type="checkbox"
+                          name="{{ row.enabled.html_name }}"
+                          {% if row.enabled.value %}checked{% endif %}
+                        >
+                        <span class="label-text font-medium">{{ row.label }}</span>
+                      </label>
+
+                      <label class="form-control w-full">
+                        <span class="label-text">{{ row.star_value.label }}</span>
+                        <input
+                          class="input input-bordered mt-2 w-full"
+                          min="0"
+                          name="{{ row.star_value.html_name }}"
+                          type="number"
+                          value="{{ row.star_value.value|default:'0' }}"
+                          required
+                        >
+                      </label>
+
+                      <label class="form-control w-full">
+                        <span class="label-text">{{ row.astral_light_value.label }}</span>
+                        <input
+                          class="input input-bordered mt-2 w-full"
+                          min="0"
+                          name="{{ row.astral_light_value.html_name }}"
+                          type="number"
+                          value="{{ row.astral_light_value.value|default:'0' }}"
+                          required
+                        >
+                      </label>
+                    </div>
+
+                    {% if row.enabled.errors or row.star_value.errors or row.astral_light_value.errors %}
+                      <div class="mt-3 text-sm text-error">
+                        {{ row.enabled.errors|join:" " }}
+                        {{ row.star_value.errors|join:" " }}
+                        {{ row.astral_light_value.errors|join:" " }}
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="card-actions justify-end">
+              <a class="btn btn-ghost" href="{% url cancel_url %}">
+                Cancelar
+              </a>
+              <button class="btn btn-primary" type="submit">
+                {{ submit_label }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

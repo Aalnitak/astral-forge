@@ -14,8 +14,17 @@
           </p>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-outline" href="{% url 'guardian:family' %}">
+            Familia
+          </a>
+          <a class="btn btn-outline" href="{% url 'guardian:mission_catalog' %}">
+            Catalogo de misiones
+          </a>
           <a class="btn btn-primary" href="{% url 'guardian:assign_mission' %}">
             Asignar mision
+          </a>
+          <a class="btn btn-outline" href="{% url 'guardian:reward_catalog' %}">
+            Catalogo de recompensas
           </a>
           <a class="btn btn-secondary" href="{% url 'guardian:redeem_reward' %}">
             Canjear recompensa

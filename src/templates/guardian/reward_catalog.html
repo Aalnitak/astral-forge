@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Catalogo de recompensas{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-6xl px-6 py-8">
+      <div class="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase text-secondary">Panel guardian</p>
+          <h1 class="text-3xl font-bold">Catalogo de recompensas</h1>
+          <p class="mt-2 text-base-content/70">
+            Define que puede solicitar la familia y cuanto cuesta en estrellas.
+          </p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-ghost" href="{% url 'guardian:dashboard' %}">Volver</a>
+          <a class="btn btn-outline" href="{% url 'guardian:rewards' %}">Canjes</a>
+          <a class="btn btn-secondary" href="{% url 'guardian:reward_create' %}">
+            Crear recompensa
+          </a>
+        </div>
+      </div>
+
+      {% if reward_cards %}
+        <div class="grid gap-5 lg:grid-cols-2">
+          {% for reward in reward_cards %}
+            <article class="card bg-base-100 shadow-sm">
+              <div class="card-body gap-5">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h2 class="card-title">{{ reward.title }}</h2>
+                      {% if reward.status == "active" %}
+                        <span class="badge badge-success">Activa</span>
+                      {% else %}
+                        <span class="badge badge-neutral">Archivada</span>
+                      {% endif %}
+                    </div>
+                    {% if reward.description %}
+                      <p class="mt-2 text-sm text-base-content/70">
+                        {{ reward.description }}
+                      </p>
+                    {% endif %}
+                  </div>
+                  <a class="btn btn-sm btn-outline" href="{% url 'guardian:reward_edit' reward.id %}">
+                    Editar
+                  </a>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Costo</div>
+                    <div class="text-xl font-bold">{{ reward.star_cost }}</div>
+                  </div>
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Aprobacion</div>
+                    {% if reward.requires_approval %}
+                      <div class="font-bold">Si</div>
+                    {% else %}
+                      <div class="font-bold">No</div>
+                    {% endif %}
+                  </div>
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Pendientes</div>
+                    <div class="text-xl font-bold">{{ reward.open_redemption_count }}</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-base-content/70">
+          Aun no hay recompensas en el catalogo.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}
