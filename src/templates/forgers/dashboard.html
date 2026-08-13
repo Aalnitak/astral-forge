@@ -20,20 +20,7 @@
         {% endif %}
       </div>
 
-      <div class="mb-8 grid gap-4 md:grid-cols-3">
-        <div class="stat rounded-box bg-base-100 shadow-sm">
-          <div class="stat-title">Estrellas</div>
-          <div class="stat-value text-primary">{{ star_balance }}</div>
-        </div>
-        <div class="stat rounded-box bg-base-100 shadow-sm">
-          <div class="stat-title">Luz Astral</div>
-          <div class="stat-value">{{ astral_light_total }}</div>
-        </div>
-        <div class="stat rounded-box bg-base-100 shadow-sm">
-          <div class="stat-title">Misiones activas</div>
-          <div class="stat-value text-secondary">{{ active_assignment_count }}</div>
-        </div>
-      </div>
+      {% include "forgers/partials/stats.html" %}
 
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <article class="card bg-base-100 shadow-sm">
@@ -58,31 +45,7 @@
                       </div>
                       <ul class="space-y-3">
                         {% for row in group.assignments %}
-                          <li class="rounded-box border border-base-300 bg-base-100 p-4">
-                            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <div class="font-medium">{{ row.assignment.mission.title }}</div>
-                                {% if row.assignment.mission.description %}
-                                  <div class="mt-1 text-sm text-base-content/60">
-                                    {{ row.assignment.mission.description }}
-                                  </div>
-                                {% endif %}
-                              </div>
-                              {% if row.is_completed_for_period %}
-                                <span class="badge badge-success">Completada</span>
-                              {% else %}
-                                <form
-                                  method="post"
-                                  action="{% url 'forgers:complete_assignment' row.assignment.id %}"
-                                >
-                                  {% csrf_token %}
-                                  <button class="btn btn-sm btn-primary" type="submit">
-                                    Completar
-                                  </button>
-                                </form>
-                              {% endif %}
-                            </div>
-                          </li>
+                          {% include "forgers/partials/mission_assignment_row.html" %}
                         {% endfor %}
                       </ul>
                     </section>

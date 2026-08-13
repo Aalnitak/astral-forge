@@ -1,0 +1,14 @@
+<div id="forger-stats" class="mb-8 grid gap-4 md:grid-cols-3" {% if hx_swap_oob %}hx-swap-oob="true"{% endif %}>
+  <div class="stat rounded-box bg-base-100 shadow-sm">
+    <div class="stat-title">Estrellas</div>
+    <div class="stat-value text-primary">{{ star_balance }}</div>
+  </div>
+  <div class="stat rounded-box bg-base-100 shadow-sm">
+    <div class="stat-title">Luz Astral</div>
+    <div class="stat-value">{{ astral_light_total }}</div>
+  </div>
+  <div class="stat rounded-box bg-base-100 shadow-sm">
+    <div class="stat-title">Misiones activas</div>
+    <div class="stat-value text-secondary">{{ active_assignment_count }}</div>
+  </div>
+</div>

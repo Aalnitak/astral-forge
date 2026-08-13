@@ -188,10 +188,35 @@ def forger_delete(request, forger_id):
                 deleted_by=request.forger_profile,
             )
         except ValidationError as exc:
-            messages.error(request, " ".join(exc.messages))
+            message = " ".join(exc.messages)
+            toast_variant = "alert-error"
         else:
-            messages.success(request, "Forjador eliminado correctamente.")
+            message = "Forjador eliminado correctamente."
+            toast_variant = "alert-success"
+        if request.htmx:
+            return render(
+                request,
+                "guardian/partials/forger_delete_response.html",
+                {
+                    "toast_message": message,
+                    "toast_variant": toast_variant,
+                },
+            )
+        if toast_variant == "alert-error":
+            messages.error(request, message)
+        else:
+            messages.success(request, message)
         return redirect("guardian:family")
+
+    if request.htmx:
+        return render(
+            request,
+            "guardian/partials/forger_delete_modal.html",
+            {
+                "forger": forger,
+                "is_self": forger.pk == request.forger_profile.pk,
+            },
+        )
 
     return render(
         request,
@@ -305,6 +330,45 @@ def mission_edit(request, mission_id):
 
 @login_required
 @guardian_required
+@require_POST
+def mission_toggle_status(request, mission_id):
+    mission = get_object_or_404(
+        Mission.objects.prefetch_related("age_rewards"),
+        pk=mission_id,
+    )
+    mission.status = (
+        Mission.Status.ARCHIVED
+        if mission.status == Mission.Status.ACTIVE
+        else Mission.Status.ACTIVE
+    )
+    mission.save(update_fields=["status", "updated_at"])
+
+    if mission.status == Mission.Status.ACTIVE:
+        message = "Mision activada correctamente."
+    else:
+        message = "Mision archivada correctamente."
+
+    if request.htmx:
+        mission.active_assignment_count = MissionAssignment.objects.filter(
+            mission=mission,
+            status=MissionAssignment.Status.ACTIVE,
+        ).count()
+        return render(
+            request,
+            "guardian/partials/mission_catalog_toggle_response.html",
+            {
+                "card": _build_mission_catalog_card(mission),
+                "toast_message": message,
+                "toast_variant": "alert-success",
+            },
+        )
+
+    messages.success(request, message)
+    return redirect("guardian:mission_catalog")
+
+
+@login_required
+@guardian_required
 def rewards(request):
     redemptions = list(_get_redemptions())
 
@@ -406,6 +470,45 @@ def reward_edit(request, reward_id):
 
 @login_required
 @guardian_required
+@require_POST
+def reward_toggle_status(request, reward_id):
+    reward = get_object_or_404(Reward, pk=reward_id)
+    reward.status = (
+        Reward.Status.ARCHIVED
+        if reward.status == Reward.Status.ACTIVE
+        else Reward.Status.ACTIVE
+    )
+    reward.save(update_fields=["status", "updated_at"])
+
+    if reward.status == Reward.Status.ACTIVE:
+        message = "Recompensa activada correctamente."
+    else:
+        message = "Recompensa archivada correctamente."
+
+    if request.htmx:
+        reward.open_redemption_count = RewardRedemption.objects.filter(
+            reward=reward,
+            status__in=[
+                RewardRedemption.Status.REQUESTED,
+                RewardRedemption.Status.REDEEMED,
+            ],
+        ).count()
+        return render(
+            request,
+            "guardian/partials/reward_catalog_toggle_response.html",
+            {
+                "reward": reward,
+                "toast_message": message,
+                "toast_variant": "alert-success",
+            },
+        )
+
+    messages.success(request, message)
+    return redirect("guardian:reward_catalog")
+
+
+@login_required
+@guardian_required
 def assign_mission(request):
     form = MissionAssignmentForm(request.POST or None)
 
@@ -474,7 +577,10 @@ def redeem_reward_view(request):
 @guardian_required
 @require_POST
 def complete_assignment(request, assignment_id):
-    assignment = get_object_or_404(MissionAssignment, pk=assignment_id)
+    assignment = get_object_or_404(
+        MissionAssignment.objects.select_related("mission", "forger", "assigned_by"),
+        pk=assignment_id,
+    )
 
     try:
         complete_mission_assignment(
@@ -482,9 +588,28 @@ def complete_assignment(request, assignment_id):
             recorded_by=request.forger_profile,
         )
     except ValidationError as exc:
-        messages.error(request, " ".join(exc.messages))
+        message = " ".join(exc.messages)
+        toast_variant = "alert-error"
     else:
-        messages.success(request, "Mision completada correctamente.")
+        message = "Mision completada correctamente."
+        toast_variant = "alert-success"
+
+    if request.htmx:
+        assignment.refresh_from_db()
+        return render(
+            request,
+            "guardian/partials/mission_completion_response.html",
+            {
+                "row": _build_assignment_row(assignment),
+                "toast_message": message,
+                "toast_variant": toast_variant,
+            },
+        )
+
+    if toast_variant == "alert-error":
+        messages.error(request, message)
+    else:
+        messages.success(request, message)
 
     return redirect("guardian:missions")
 
@@ -493,7 +618,10 @@ def complete_assignment(request, assignment_id):
 @guardian_required
 @require_POST
 def redeem_redemption(request, redemption_id):
-    redemption = get_object_or_404(RewardRedemption, pk=redemption_id)
+    redemption = get_object_or_404(
+        RewardRedemption.objects.select_related("forger", "reward"),
+        pk=redemption_id,
+    )
 
     try:
         redeem_reward(
@@ -501,9 +629,25 @@ def redeem_redemption(request, redemption_id):
             approved_by=request.forger_profile,
         )
     except ValidationError as exc:
-        messages.error(request, " ".join(exc.messages))
+        message = " ".join(exc.messages)
+        toast_variant = "alert-error"
     else:
-        messages.success(request, "Recompensa canjeada correctamente.")
+        message = "Recompensa canjeada correctamente."
+        toast_variant = "alert-success"
+
+    if request.htmx:
+        redemption.refresh_from_db()
+        return _render_redemption_action_response(
+            request,
+            redemption,
+            message,
+            toast_variant,
+        )
+
+    if toast_variant == "alert-error":
+        messages.error(request, message)
+    else:
+        messages.success(request, message)
 
     return redirect("guardian:rewards")
 
@@ -512,7 +656,10 @@ def redeem_redemption(request, redemption_id):
 @guardian_required
 @require_POST
 def reject_redemption(request, redemption_id):
-    redemption = get_object_or_404(RewardRedemption, pk=redemption_id)
+    redemption = get_object_or_404(
+        RewardRedemption.objects.select_related("forger", "reward"),
+        pk=redemption_id,
+    )
 
     try:
         reject_reward_redemption(
@@ -520,9 +667,25 @@ def reject_redemption(request, redemption_id):
             approved_by=request.forger_profile,
         )
     except ValidationError as exc:
-        messages.error(request, " ".join(exc.messages))
+        message = " ".join(exc.messages)
+        toast_variant = "alert-error"
     else:
-        messages.success(request, "Recompensa rechazada.")
+        message = "Recompensa rechazada."
+        toast_variant = "alert-success"
+
+    if request.htmx:
+        redemption.refresh_from_db()
+        return _render_redemption_action_response(
+            request,
+            redemption,
+            message,
+            toast_variant,
+        )
+
+    if toast_variant == "alert-error":
+        messages.error(request, message)
+    else:
+        messages.success(request, message)
 
     return redirect("guardian:rewards")
 
@@ -531,16 +694,39 @@ def reject_redemption(request, redemption_id):
 @guardian_required
 @require_POST
 def fulfill_redemption(request, redemption_id):
-    redemption = get_object_or_404(RewardRedemption, pk=redemption_id)
+    redemption = get_object_or_404(
+        RewardRedemption.objects.select_related("forger", "reward"),
+        pk=redemption_id,
+    )
 
     if redemption.status != RewardRedemption.Status.REDEEMED:
-        messages.error(request, "Solo las recompensas canjeadas pueden entregarse.")
+        message = "Solo las recompensas canjeadas pueden entregarse."
+        toast_variant = "alert-error"
+        if request.htmx:
+            return _render_redemption_action_response(
+                request,
+                redemption,
+                message,
+                toast_variant,
+            )
+        messages.error(request, message)
         return redirect("guardian:rewards")
 
     redemption.status = RewardRedemption.Status.FULFILLED
     redemption.fulfilled_at = timezone.now()
     redemption.save(update_fields=["status", "fulfilled_at", "updated_at"])
-    messages.success(request, "Recompensa marcada como entregada.")
+    message = "Recompensa marcada como entregada."
+    toast_variant = "alert-success"
+
+    if request.htmx:
+        return _render_redemption_action_response(
+            request,
+            redemption,
+            message,
+            toast_variant,
+        )
+
+    messages.success(request, message)
 
     return redirect("guardian:rewards")
 
@@ -552,6 +738,18 @@ def _get_redemptions():
         "requested_by",
         "approved_by",
     ).order_by("-requested_at", "-id")
+
+
+def _render_redemption_action_response(request, redemption, message, toast_variant):
+    return render(
+        request,
+        "guardian/partials/redemption_action_response.html",
+        {
+            "redemption": redemption,
+            "toast_message": message,
+            "toast_variant": toast_variant,
+        },
+    )
 
 
 def _get_pending_redemptions(redemptions):
@@ -570,13 +768,7 @@ def _build_mission_cards(active_assignments):
     today = timezone.localdate()
     forgers = list(ForgerProfile.objects.select_related("user"))
     assignment_rows = [
-        {
-            "assignment": assignment,
-            "is_completed_for_period": is_assignment_completed_for_period(
-                assignment,
-                today,
-            ),
-        }
+        _build_assignment_row(assignment, today)
         for assignment in active_assignments
     ]
 
@@ -599,30 +791,38 @@ def _build_mission_cards(active_assignments):
     return mission_cards
 
 
+def _build_assignment_row(assignment, today=None):
+    today = today or timezone.localdate()
+    return {
+        "assignment": assignment,
+        "is_completed_for_period": is_assignment_completed_for_period(
+            assignment,
+            today,
+        ),
+    }
+
+
 def _build_mission_catalog_cards(missions):
-    cards = []
+    return [_build_mission_catalog_card(mission) for mission in missions]
 
-    for mission in missions:
-        reward_by_age_group = {
-            reward.age_group: reward for reward in mission.age_rewards.all()
-        }
-        cards.append(
+
+def _build_mission_catalog_card(mission):
+    reward_by_age_group = {
+        reward.age_group: reward for reward in mission.age_rewards.all()
+    }
+    return {
+        "mission": mission,
+        "active_assignment_count": mission.active_assignment_count,
+        "age_rewards": [
             {
-                "mission": mission,
-                "active_assignment_count": mission.active_assignment_count,
-                "age_rewards": [
-                    {
-                        "label": label,
-                        "reward": reward_by_age_group.get(age_group),
-                    }
-                    for age_group, label in ForgerProfile.AgeGroup.choices
-                    if reward_by_age_group.get(age_group)
-                    and reward_by_age_group[age_group].is_active
-                ],
+                "label": label,
+                "reward": reward_by_age_group.get(age_group),
             }
-        )
-
-    return cards
+            for age_group, label in ForgerProfile.AgeGroup.choices
+            if reward_by_age_group.get(age_group)
+            and reward_by_age_group[age_group].is_active
+        ],
+    }
 
 
 def _build_reward_cards(redemptions):

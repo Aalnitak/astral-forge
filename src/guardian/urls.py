@@ -26,6 +26,11 @@ urlpatterns = [
         views.mission_edit,
         name="mission_edit",
     ),
+    path(
+        "catalog/missions/<int:mission_id>/toggle-status/",
+        views.mission_toggle_status,
+        name="mission_toggle_status",
+    ),
     path("rewards/", views.rewards, name="rewards"),
     path("catalog/rewards/", views.reward_catalog, name="reward_catalog"),
     path("catalog/rewards/new/", views.reward_create, name="reward_create"),
@@ -33,6 +38,11 @@ urlpatterns = [
         "catalog/rewards/<int:reward_id>/edit/",
         views.reward_edit,
         name="reward_edit",
+    ),
+    path(
+        "catalog/rewards/<int:reward_id>/toggle-status/",
+        views.reward_toggle_status,
+        name="reward_toggle_status",
     ),
     path("assign-mission/", views.assign_mission, name="assign_mission"),
     path("redeem-reward/", views.redeem_reward_view, name="redeem_reward"),

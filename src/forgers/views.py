@@ -63,13 +63,7 @@ def profile(request, username):
     )
     today = timezone.localdate()
     assignment_rows = [
-        {
-            "assignment": assignment,
-            "is_completed_for_period": is_assignment_completed_for_period(
-                assignment,
-                today,
-            ),
-        }
+        _build_assignment_row(assignment, today)
         for assignment in assignments
     ]
     recent_redemptions = RewardRedemption.objects.filter(forger=forger).select_related(
@@ -100,11 +94,20 @@ def complete_assignment(request, assignment_id):
     forger = _get_request_forger(request)
 
     if forger is None:
+        if request.htmx:
+            return render(
+                request,
+                "partials/toast.html",
+                {
+                    "message": "Tu usuario necesita un perfil de forjador.",
+                    "variant": "alert-error",
+                },
+            )
         messages.error(request, "Tu usuario necesita un perfil de forjador.")
         return redirect("home")
 
     assignment = get_object_or_404(
-        MissionAssignment,
+        MissionAssignment.objects.select_related("mission", "forger", "assigned_by"),
         pk=assignment_id,
         forger=forger,
     )
@@ -115,9 +118,35 @@ def complete_assignment(request, assignment_id):
             recorded_by=forger,
         )
     except ValidationError as exc:
-        messages.error(request, " ".join(exc.messages))
+        message = " ".join(exc.messages)
+        toast_variant = "alert-error"
     else:
-        messages.success(request, "Mision completada correctamente.")
+        message = "Mision completada correctamente."
+        toast_variant = "alert-success"
+
+    if request.htmx:
+        assignment.refresh_from_db()
+        return render(
+            request,
+            "forgers/partials/mission_completion_response.html",
+            {
+                "row": _build_assignment_row(assignment),
+                "forger": forger,
+                "star_balance": get_star_balance(forger),
+                "astral_light_total": get_astral_light_total(forger),
+                "active_assignment_count": MissionAssignment.objects.filter(
+                    forger=forger,
+                    status=MissionAssignment.Status.ACTIVE,
+                ).count(),
+                "toast_message": message,
+                "toast_variant": toast_variant,
+            },
+        )
+
+    if toast_variant == "alert-error":
+        messages.error(request, message)
+    else:
+        messages.success(request, message)
 
     return redirect("forgers:profile", username=forger.user.username)
 
@@ -147,11 +176,7 @@ def rewards(request):
             "forger": forger,
             "star_balance": star_balance,
             "reward_cards": [
-                {
-                    "reward": reward,
-                    "can_request": star_balance >= reward.star_cost,
-                    "missing_stars": max(reward.star_cost - star_balance, 0),
-                }
+                _build_reward_card(reward, star_balance)
                 for reward in active_rewards
             ],
             "redemptions": redemptions,
@@ -166,13 +191,33 @@ def request_reward(request, reward_id):
     forger = _get_request_forger(request)
 
     if forger is None:
+        if request.htmx:
+            return render(
+                request,
+                "partials/toast.html",
+                {
+                    "message": "Tu usuario necesita un perfil de forjador.",
+                    "variant": "alert-error",
+                },
+            )
         messages.error(request, "Tu usuario necesita un perfil de forjador.")
         return redirect("home")
 
     reward = get_object_or_404(Reward, pk=reward_id)
+    star_balance = get_star_balance(forger)
 
-    if get_star_balance(forger) < reward.star_cost:
-        messages.error(request, "No tienes suficientes estrellas para esta recompensa.")
+    if star_balance < reward.star_cost:
+        message = "No tienes suficientes estrellas para esta recompensa."
+        if request.htmx:
+            return _render_reward_request_response(
+                request=request,
+                reward=reward,
+                forger=forger,
+                star_balance=star_balance,
+                message=message,
+                toast_variant="alert-error",
+            )
+        messages.error(request, message)
         return redirect("forgers:rewards")
 
     try:
@@ -182,9 +227,26 @@ def request_reward(request, reward_id):
             requested_by=forger,
         )
     except ValidationError as exc:
-        messages.error(request, " ".join(exc.messages))
+        message = " ".join(exc.messages)
+        toast_variant = "alert-error"
     else:
-        messages.success(request, "Recompensa solicitada correctamente.")
+        message = "Recompensa solicitada correctamente."
+        toast_variant = "alert-success"
+
+    if request.htmx:
+        return _render_reward_request_response(
+            request=request,
+            reward=reward,
+            forger=forger,
+            star_balance=get_star_balance(forger),
+            message=message,
+            toast_variant=toast_variant,
+        )
+
+    if toast_variant == "alert-error":
+        messages.error(request, message)
+    else:
+        messages.success(request, message)
 
     return redirect("forgers:rewards")
 
@@ -208,6 +270,48 @@ def _group_assignment_rows_by_cadence(assignment_rows):
         }
         for cadence, label in cadence_groups
     ]
+
+
+def _build_assignment_row(assignment, today=None):
+    today = today or timezone.localdate()
+    return {
+        "assignment": assignment,
+        "is_completed_for_period": is_assignment_completed_for_period(
+            assignment,
+            today,
+        ),
+    }
+
+
+def _build_reward_card(reward, star_balance):
+    return {
+        "reward": reward,
+        "can_request": star_balance >= reward.star_cost,
+        "missing_stars": max(reward.star_cost - star_balance, 0),
+    }
+
+
+def _render_reward_request_response(
+    request,
+    reward,
+    forger,
+    star_balance,
+    message,
+    toast_variant,
+):
+    redemptions = RewardRedemption.objects.filter(forger=forger).select_related(
+        "reward",
+    )
+    return render(
+        request,
+        "forgers/partials/reward_request_response.html",
+        {
+            "card": _build_reward_card(reward, star_balance),
+            "redemptions": redemptions,
+            "toast_message": message,
+            "toast_variant": toast_variant,
+        },
+    )
 
 
 def _get_family_members(forger):

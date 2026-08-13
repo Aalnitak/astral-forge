@@ -1,10 +1,11 @@
-<div hx-swap-oob="beforeend:#toasts" >
-    <div
-        class="alert {{ variant|default:'alert-info' }} shadow-lg"
-        role="status"
-        aria-live="polite"
-        data-ttl="{{ ttl|default:3000 }}">
-  <span>{{ message }}</span>
-  <button class="btn btn-ghost btn-sm" onclick="this.closest('.alert')?.remove()" aria-label="Close">✕</button>
-    </div>
+<div hx-swap-oob="beforeend:#toasts">
+  <div
+    class="alert {{ variant|default:'alert-info' }} shadow-lg"
+    role="status"
+    aria-live="polite"
+    data-ttl="{{ ttl|default:3000 }}"
+  >
+    <span>{{ message }}</span>
+    <button class="btn btn-ghost btn-sm" data-toast-close type="button" aria-label="Close">x</button>
+  </div>
 </div>

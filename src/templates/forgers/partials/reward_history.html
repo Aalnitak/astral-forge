@@ -1,0 +1,36 @@
+<div id="reward-history" {% if hx_swap_oob %}hx-swap-oob="true"{% endif %}>
+  <h2 class="card-title">Mis solicitudes</h2>
+  {% if redemptions %}
+    <ul class="mt-3 space-y-2">
+      {% for redemption in redemptions %}
+        <li class="rounded-box bg-base-200 px-4 py-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm font-medium">{{ redemption.reward.title }}</div>
+              <div class="text-xs text-base-content/60">
+                {{ redemption.star_cost }} estrellas
+              </div>
+            </div>
+            {% if redemption.status == "requested" %}
+              <span class="badge badge-info">Solicitada</span>
+            {% elif redemption.status == "fulfilled" %}
+              <span class="badge badge-success">Entregada</span>
+            {% elif redemption.status == "redeemed" %}
+              <span class="badge badge-warning">Canjeada</span>
+            {% elif redemption.status == "rejected" %}
+              <span class="badge badge-error">Rechazada</span>
+            {% elif redemption.status == "canceled" %}
+              <span class="badge badge-neutral">Cancelada</span>
+            {% else %}
+              <span class="badge badge-ghost">{{ redemption.get_status_display }}</span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="mt-3 rounded-box border border-dashed border-base-300 p-4 text-sm text-base-content/60">
+      Aun no has solicitado recompensas.
+    </div>
+  {% endif %}
+</div>

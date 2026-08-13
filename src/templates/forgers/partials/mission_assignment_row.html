@@ -1,0 +1,28 @@
+<li id="assignment-row-{{ row.assignment.id }}" class="rounded-box border border-base-300 bg-base-100 p-4">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div class="font-medium">{{ row.assignment.mission.title }}</div>
+      {% if row.assignment.mission.description %}
+        <div class="mt-1 text-sm text-base-content/60">
+          {{ row.assignment.mission.description }}
+        </div>
+      {% endif %}
+    </div>
+    {% if row.is_completed_for_period %}
+      <span class="badge badge-success">Completada</span>
+    {% else %}
+      <form
+        method="post"
+        action="{% url 'forgers:complete_assignment' row.assignment.id %}"
+        hx-post="{% url 'forgers:complete_assignment' row.assignment.id %}"
+        hx-target="#assignment-row-{{ row.assignment.id }}"
+        hx-swap="outerHTML"
+      >
+        {% csrf_token %}
+        <button class="btn btn-sm btn-primary" type="submit">
+          Completar
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</li>

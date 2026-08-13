@@ -720,6 +720,29 @@ entries must be created through service-layer workflows so validation,
 transactions, cadence rules, balance checks, and ledger consistency are always
 enforced. Guardian UI owns family-facing operational flows.
 
+### HTMX Interaction Pattern
+
+Decision: use HTMX for small state transitions, while keeping larger CRUD forms
+as normal Django pages.
+
+Current HTMX use:
+
+- completing a mission updates only the mission assignment row;
+- forger mission completion also refreshes the balance stats out-of-band;
+- guardian reward actions update only the reward redemption row;
+- forger reward requests update the reward card and request history;
+- mission and reward catalog status toggles update only the affected catalog
+  card;
+- guardian delete confirmation loads in a modal, while the final delete remains
+  POST-only with redirect fallback;
+- responses include out-of-band DaisyUI toasts;
+- normal non-HTMX POST redirects remain as fallback behavior.
+
+Reasoning: mission completion, reward requests, reward redemption actions, and
+delete confirmation are compact interactions with immediate visual feedback.
+Create/edit forms for missions, rewards, and family members remain full-page
+flows until there is a clear UX benefit to partial updates.
+
 ### Guardian Mission Catalog
 
 Decision: guardians manage the shared mission catalog from dedicated guardian UI

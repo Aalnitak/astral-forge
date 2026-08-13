@@ -1,0 +1,59 @@
+<article id="reward-card-{{ reward.id }}" class="card bg-base-100 shadow-sm">
+  <div class="card-body gap-5">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="card-title">{{ reward.title }}</h2>
+          {% if reward.status == "active" %}
+            <span class="badge badge-success">Activa</span>
+          {% else %}
+            <span class="badge badge-neutral">Archivada</span>
+          {% endif %}
+        </div>
+        {% if reward.description %}
+          <p class="mt-2 text-sm text-base-content/70">
+            {{ reward.description }}
+          </p>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <form
+          method="post"
+          action="{% url 'guardian:reward_toggle_status' reward.id %}"
+          hx-post="{% url 'guardian:reward_toggle_status' reward.id %}"
+          hx-target="#reward-card-{{ reward.id }}"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          {% if reward.status == "active" %}
+            <button class="btn btn-sm btn-neutral" type="submit">Archivar</button>
+          {% else %}
+            <button class="btn btn-sm btn-success" type="submit">Activar</button>
+          {% endif %}
+        </form>
+        <a class="btn btn-sm btn-outline" href="{% url 'guardian:reward_edit' reward.id %}">
+          Editar
+        </a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div class="rounded-box bg-base-200 p-4">
+        <div class="text-xs text-base-content/60">Costo</div>
+        <div class="text-xl font-bold">{{ reward.star_cost }}</div>
+      </div>
+      <div class="rounded-box bg-base-200 p-4">
+        <div class="text-xs text-base-content/60">Aprobacion</div>
+        {% if reward.requires_approval %}
+          <div class="font-bold">Si</div>
+        {% else %}
+          <div class="font-bold">No</div>
+        {% endif %}
+      </div>
+      <div class="rounded-box bg-base-200 p-4">
+        <div class="text-xs text-base-content/60">Pendientes</div>
+        <div class="text-xl font-bold">{{ reward.open_redemption_count }}</div>
+      </div>
+    </div>
+  </div>
+</article>

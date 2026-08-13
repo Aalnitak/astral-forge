@@ -47,54 +47,7 @@
                     </h3>
                     <ul class="space-y-3">
                       {% for redemption in card.pending_redemptions %}
-                        <li class="rounded-box border border-base-300 bg-base-100 p-4">
-                          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <div class="font-medium">{{ redemption.reward.title }}</div>
-                              <div class="text-sm text-base-content/60">
-                                {{ redemption.star_cost }} estrellas
-                              </div>
-                            </div>
-                            {% if redemption.status == "redeemed" %}
-                              <div class="flex items-center gap-2">
-                                <span class="badge badge-warning">Canjeada</span>
-                                <form
-                                  method="post"
-                                  action="{% url 'guardian:fulfill_redemption' redemption.id %}"
-                                >
-                                  {% csrf_token %}
-                                  <button class="btn btn-xs btn-success" type="submit">
-                                    Marcar entregada
-                                  </button>
-                                </form>
-                              </div>
-                            {% elif redemption.status == "requested" %}
-                              <div class="flex flex-wrap items-center gap-2">
-                                <span class="badge badge-info">Solicitada</span>
-                                <form
-                                  method="post"
-                                  action="{% url 'guardian:redeem_redemption' redemption.id %}"
-                                >
-                                  {% csrf_token %}
-                                  <button class="btn btn-xs btn-secondary" type="submit">
-                                    Canjear
-                                  </button>
-                                </form>
-                                <form
-                                  method="post"
-                                  action="{% url 'guardian:reject_redemption' redemption.id %}"
-                                >
-                                  {% csrf_token %}
-                                  <button class="btn btn-xs btn-error" type="submit">
-                                    Rechazar
-                                  </button>
-                                </form>
-                              </div>
-                            {% else %}
-                              <span class="badge badge-ghost">{{ redemption.get_status_display }}</span>
-                            {% endif %}
-                          </div>
-                        </li>
+                        {% include "guardian/partials/pending_redemption_row.html" %}
                       {% endfor %}
                     </ul>
                   </div>
@@ -107,25 +60,7 @@
                     </h3>
                     <ul class="space-y-2">
                       {% for redemption in card.recent_redemptions %}
-                        <li class="flex items-center justify-between gap-3 rounded-box bg-base-200 px-4 py-3">
-                          <div>
-                            <div class="text-sm font-medium">{{ redemption.reward.title }}</div>
-                            <div class="text-xs text-base-content/60">
-                              {{ redemption.star_cost }} estrellas
-                            </div>
-                          </div>
-                          {% if redemption.status == "fulfilled" %}
-                            <span class="badge badge-success">Entregada</span>
-                          {% elif redemption.status == "redeemed" %}
-                            <span class="badge badge-warning">Canjeada</span>
-                          {% elif redemption.status == "rejected" %}
-                            <span class="badge badge-error">Rechazada</span>
-                          {% elif redemption.status == "canceled" %}
-                            <span class="badge badge-neutral">Cancelada</span>
-                          {% else %}
-                            <span class="badge badge-ghost">{{ redemption.get_status_display }}</span>
-                          {% endif %}
-                        </li>
+                        {% include "guardian/partials/recent_redemption_row.html" %}
                       {% endfor %}
                     </ul>
                   </div>

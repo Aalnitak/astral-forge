@@ -13,41 +13,7 @@
 
       <div class="card border border-error/30 bg-base-100 shadow-sm">
         <div class="card-body gap-6">
-          <div>
-            <p class="text-sm font-semibold uppercase text-error">Accion destructiva</p>
-            <h1 class="card-title text-2xl">Eliminar forjador</h1>
-            <p class="mt-2 text-base-content/70">
-              Estas por eliminar a {{ forger.display_name }} y su usuario {{ forger.user.username }}.
-            </p>
-          </div>
-
-          <div class="alert alert-error">
-            <span>
-              Esta accion eliminara su perfil, membresia familiar, misiones asignadas,
-              completaciones, eventos, movimientos de estrellas, Luz Astral y canjes propios.
-            </span>
-          </div>
-
-          {% if is_self %}
-            <div class="alert">
-              <span>No puedes eliminar tu propio perfil guardian desde esta pantalla.</span>
-            </div>
-            <div class="card-actions justify-end">
-              <a class="btn btn-primary" href="{% url 'guardian:family' %}">
-                Entendido
-              </a>
-            </div>
-          {% else %}
-            <form class="card-actions justify-end" method="post">
-              {% csrf_token %}
-              <a class="btn btn-ghost" href="{% url 'guardian:family' %}">
-                Cancelar
-              </a>
-              <button class="btn btn-error" type="submit">
-                Si, eliminar forjador
-              </button>
-            </form>
-          {% endif %}
+          {% include "guardian/partials/forger_delete_content.html" %}
         </div>
       </div>
     </div>

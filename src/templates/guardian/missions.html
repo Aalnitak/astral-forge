@@ -60,35 +60,7 @@
                           </div>
                           <ul class="space-y-3">
                             {% for row in group.assignments %}
-                              <li class="rounded-box border border-base-300 bg-base-100 p-4">
-                                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                  <div>
-                                    <div class="font-medium">{{ row.assignment.mission.title }}</div>
-                                    {% if row.assignment.ends_on %}
-                                      <div class="text-sm text-base-content/60">
-                                        Hasta {{ row.assignment.ends_on }}
-                                      </div>
-                                    {% else %}
-                                      <div class="text-sm text-base-content/60">
-                                        Sin fecha de termino
-                                      </div>
-                                    {% endif %}
-                                  </div>
-                                  {% if row.is_completed_for_period %}
-                                    <span class="badge badge-success">Completada</span>
-                                  {% else %}
-                                    <form
-                                      method="post"
-                                      action="{% url 'guardian:complete_assignment' row.assignment.id %}"
-                                    >
-                                      {% csrf_token %}
-                                      <button class="btn btn-sm btn-primary" type="submit">
-                                        Completar hoy
-                                      </button>
-                                    </form>
-                                  {% endif %}
-                                </div>
-                              </li>
+                              {% include "guardian/partials/mission_assignment_row.html" %}
                             {% endfor %}
                           </ul>
                         </section>

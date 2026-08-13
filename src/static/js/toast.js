@@ -72,9 +72,14 @@
     const obs = new MutationObserver((mutations) => {
       for (const m of mutations) {
         for (const node of m.addedNodes) {
-          if (node.nodeType === 1 && node.classList.contains("alert")) {
-            schedule(node);
-            bindHoverPause(node);
+          if (node.nodeType === 1) {
+            const alerts = node.classList.contains("alert")
+              ? [node]
+              : Array.from(node.querySelectorAll(".alert"));
+            alerts.forEach((el) => {
+              schedule(el);
+              bindHoverPause(el);
+            });
           }
         }
       }

@@ -59,3 +59,11 @@ document.addEventListener("htmx:responseError", (e) => {
   const status = e.detail.xhr?.status || 0;
   console.error("HTMX error", status, e.detail.xhr?.responseText);
 });
+
+document.addEventListener("click", (e) => {
+  const closeButton = e.target.closest("[data-modal-close]");
+  if (!closeButton) return;
+
+  const modalRoot = document.getElementById("modal-root");
+  if (modalRoot) modalRoot.innerHTML = "";
+});
