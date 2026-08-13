@@ -218,7 +218,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Internationalization / Time
 # ----------------------------
 LANGUAGE_CODE = os.getenv("DJANGO_LANGUAGE_CODE", "en-us")
-TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
+TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "America/Santiago")
 USE_I18N = True
 USE_TZ = True
 
