@@ -1,19 +1,26 @@
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone as datetime_timezone
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.test import override_settings
 from django.utils import timezone
 
+from families.models import Family
+from families.models import FamilyMembership
 from forge.models import AstralLightLedgerEntry
 from forge.models import ForgeEvent
 from forge.models import StarLedgerEntry
 from forge.services import assign_mission_to_forger
 from forge.services import complete_mission_assignment
+from forge.services import create_family_forger
+from forge.services import delete_family_forger
 from forge.services import get_astral_light_total
 from forge.services import get_star_balance
+from forge.services import is_assignment_completed_for_period
 from forge.services import redeem_reward
 from forge.services import reject_reward_redemption
 from forge.services import request_reward_redemption
@@ -111,6 +118,95 @@ class ForgeServiceTests(TestCase):
             forger=self.child,
             requested_by=self.child,
         )
+
+    def test_create_family_forger_creates_user_profile_and_membership(self):
+        forger = create_family_forger(
+            username="nova",
+            password="secret-pass",
+            display_name="Nova",
+            age_group=ForgerProfile.AgeGroup.CHILD,
+            is_guardian=False,
+            created_by=self.guardian,
+        )
+
+        self.assertEqual(forger.user.username, "nova")
+        self.assertTrue(forger.user.check_password("secret-pass"))
+        self.assertEqual(forger.display_name, "Nova")
+        self.assertEqual(forger.age_group, ForgerProfile.AgeGroup.CHILD)
+        self.assertFalse(forger.is_guardian)
+        self.assertEqual(Family.objects.count(), 1)
+
+        membership = FamilyMembership.objects.get(forger=forger)
+        self.assertEqual(membership.family.created_by, self.guardian)
+        self.assertEqual(membership.role, FamilyMembership.Role.MEMBER)
+        self.assertEqual(membership.status, FamilyMembership.Status.ACTIVE)
+
+    def test_create_family_forger_uses_existing_single_family(self):
+        family = Family.objects.create(
+            name="Familia principal",
+            created_by=self.guardian,
+        )
+
+        forger = create_family_forger(
+            username="orion",
+            password="secret-pass",
+            display_name="Orion",
+            age_group=ForgerProfile.AgeGroup.ADULT,
+            is_guardian=True,
+            created_by=self.guardian,
+        )
+
+        self.assertEqual(Family.objects.count(), 1)
+        membership = FamilyMembership.objects.get(forger=forger)
+        self.assertEqual(membership.family, family)
+        self.assertEqual(membership.role, FamilyMembership.Role.GUARDIAN)
+
+    def test_delete_family_forger_deletes_user_and_owned_data(self):
+        forger = create_family_forger(
+            username="nova",
+            password="secret-pass",
+            display_name="Nova",
+            age_group=ForgerProfile.AgeGroup.CHILD,
+            created_by=self.guardian,
+        )
+        assignment = self.create_assignment(
+            forger=forger,
+            child_stars=10,
+            child_light=5,
+        )
+        complete_mission_assignment(
+            assignment=assignment,
+            recorded_by=forger,
+            completed_at=timezone.make_aware(datetime(2026, 8, 11, 9, 0)),
+        )
+        redemption = self.create_reward_redemption(star_cost=4)
+        redemption.forger = forger
+        redemption.requested_by = forger
+        redemption.save(update_fields=["forger", "requested_by", "updated_at"])
+        redeem_reward(redemption=redemption, approved_by=self.guardian)
+        user_id = forger.user_id
+
+        delete_family_forger(forger=forger, deleted_by=self.guardian)
+
+        self.assertFalse(get_user_model().objects.filter(pk=user_id).exists())
+        self.assertFalse(ForgerProfile.objects.filter(pk=forger.pk).exists())
+        self.assertFalse(FamilyMembership.objects.filter(forger=forger).exists())
+        self.assertFalse(MissionAssignment.objects.filter(forger=forger).exists())
+        self.assertFalse(StarLedgerEntry.objects.filter(forger=forger).exists())
+        self.assertFalse(
+            AstralLightLedgerEntry.objects.filter(forger=forger).exists()
+        )
+        self.assertFalse(RewardRedemption.objects.filter(forger=forger).exists())
+        self.assertFalse(ForgeEvent.objects.filter(forger=forger).exists())
+
+    def test_delete_family_forger_blocks_self_delete(self):
+        with self.assertRaises(ValidationError):
+            delete_family_forger(
+                forger=self.guardian,
+                deleted_by=self.guardian,
+            )
+
+        self.assertTrue(ForgerProfile.objects.filter(pk=self.guardian.pk).exists())
 
     def test_assign_mission_to_forger_creates_assignment(self):
         mission = self.create_mission_with_child_reward()
@@ -218,6 +314,33 @@ class ForgeServiceTests(TestCase):
                 recorded_by=self.child,
                 completed_at=completed_at + timedelta(hours=1),
             )
+
+    @override_settings(TIME_ZONE="America/Santiago")
+    def test_daily_mission_resets_by_local_calendar_day(self):
+        assignment = self.create_assignment(cadence=Mission.Cadence.DAILY)
+
+        first_completion = complete_mission_assignment(
+            assignment=assignment,
+            recorded_by=self.child,
+            completed_at=datetime(2026, 8, 12, 2, 30, tzinfo=datetime_timezone.utc),
+        )
+
+        self.assertEqual(first_completion.completed_on, date(2026, 8, 11))
+        self.assertTrue(
+            is_assignment_completed_for_period(assignment, date(2026, 8, 11))
+        )
+        self.assertFalse(
+            is_assignment_completed_for_period(assignment, date(2026, 8, 12))
+        )
+
+        second_completion = complete_mission_assignment(
+            assignment=assignment,
+            recorded_by=self.child,
+            completed_at=datetime(2026, 8, 12, 13, 0, tzinfo=datetime_timezone.utc),
+        )
+
+        self.assertEqual(second_completion.completed_on, date(2026, 8, 12))
+        self.assertEqual(MissionCompletion.objects.count(), 2)
 
     def test_one_time_mission_can_only_be_completed_once(self):
         assignment = self.create_assignment(cadence=Mission.Cadence.ONE_TIME)

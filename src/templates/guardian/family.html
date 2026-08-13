@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Familia{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-6xl px-6 py-8">
+      <div class="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase text-primary">Panel guardian</p>
+          <h1 class="text-3xl font-bold">Familia</h1>
+          <p class="mt-2 text-base-content/70">
+            Revisa perfiles, grupos de edad y permisos de guardian.
+          </p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-ghost" href="{% url 'guardian:dashboard' %}">Volver</a>
+          <a class="btn btn-primary" href="{% url 'guardian:forger_create' %}">
+            Crear forjador
+          </a>
+        </div>
+      </div>
+
+      {% if forgers %}
+        <div class="grid gap-5 lg:grid-cols-2">
+          {% for forger in forgers %}
+            <article class="card bg-base-100 shadow-sm">
+              <div class="card-body gap-5">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h2 class="card-title">{{ forger.display_name }}</h2>
+                      {% if forger.is_guardian %}
+                        <span class="badge badge-primary">Guardian</span>
+                      {% endif %}
+                    </div>
+                    <p class="mt-1 text-sm text-base-content/60">
+                      {{ forger.user.username }}
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <a class="btn btn-sm btn-outline" href="{% url 'guardian:forger_edit' forger.id %}">
+                      Editar
+                    </a>
+                    <a class="btn btn-sm btn-error" href="{% url 'guardian:forger_delete' forger.id %}">
+                      Eliminar
+                    </a>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Edad</div>
+                    <div class="font-bold">
+                      {{ forger.get_age_group_display|default:"Sin grupo" }}
+                    </div>
+                  </div>
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Misiones</div>
+                    <div class="text-xl font-bold">{{ forger.active_assignment_count }}</div>
+                  </div>
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Canjes abiertos</div>
+                    <div class="text-xl font-bold">{{ forger.open_redemption_count }}</div>
+                  </div>
+                  <div class="rounded-box bg-base-200 p-4">
+                    <div class="text-xs text-base-content/60">Canjes totales</div>
+                    <div class="text-xl font-bold">{{ forger.total_successful_redemption_count }}</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6 text-base-content/70">
+          Aun no hay forjadores configurados.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

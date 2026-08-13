@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -12,12 +10,12 @@ from django.views.decorators.http import require_POST
 from forge.services import complete_mission_assignment
 from forge.services import get_astral_light_total
 from forge.services import get_star_balance
+from forge.services import is_assignment_completed_for_period
 from forge.services import request_reward_redemption
 from families.models import FamilyMembership
 from forgers.models import ForgerProfile
 from missions.models import Mission
 from missions.models import MissionAssignment
-from missions.models import MissionCompletion
 from rewards.models import Reward
 from rewards.models import RewardRedemption
 
@@ -67,7 +65,7 @@ def profile(request, username):
     assignment_rows = [
         {
             "assignment": assignment,
-            "is_completed_for_period": _is_assignment_completed_for_period(
+            "is_completed_for_period": is_assignment_completed_for_period(
                 assignment,
                 today,
             ),
@@ -189,23 +187,6 @@ def request_reward(request, reward_id):
         messages.success(request, "Recompensa solicitada correctamente.")
 
     return redirect("forgers:rewards")
-
-
-def _is_assignment_completed_for_period(assignment, today):
-    completions = MissionCompletion.objects.filter(assignment=assignment)
-
-    if assignment.mission.cadence == Mission.Cadence.ONE_TIME:
-        return completions.exists()
-
-    if assignment.mission.cadence == Mission.Cadence.DAILY:
-        return completions.filter(completed_on=today).exists()
-
-    if assignment.mission.cadence == Mission.Cadence.WEEKLY:
-        week_start = today - timedelta(days=today.weekday())
-        week_end = week_start + timedelta(days=6)
-        return completions.filter(completed_on__range=(week_start, week_end)).exists()
-
-    return False
 
 
 def _group_assignment_rows_by_cadence(assignment_rows):

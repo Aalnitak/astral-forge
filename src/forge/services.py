@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
@@ -8,6 +9,9 @@ from django.utils import timezone
 from forge.models import AstralLightLedgerEntry
 from forge.models import ForgeEvent
 from forge.models import StarLedgerEntry
+from families.models import Family
+from families.models import FamilyMembership
+from forgers.models import ForgerProfile
 from missions.models import Mission
 from missions.models import MissionAgeReward
 from missions.models import MissionAssignment
@@ -32,6 +36,101 @@ def get_astral_light_total(forger):
         )["total"]
         or 0
     )
+
+
+def is_assignment_completed_for_period(assignment, today=None):
+    today = today or timezone.localdate()
+    completions = MissionCompletion.objects.filter(assignment=assignment)
+
+    if assignment.mission.cadence == Mission.Cadence.ONE_TIME:
+        return completions.exists()
+
+    if assignment.mission.cadence == Mission.Cadence.DAILY:
+        return completions.filter(completed_on=today).exists()
+
+    if assignment.mission.cadence == Mission.Cadence.WEEKLY:
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        return completions.filter(completed_on__range=(week_start, week_end)).exists()
+
+    return False
+
+
+@transaction.atomic
+def get_or_create_app_family(created_by, name="Familia"):
+    family = Family.objects.order_by("id").first()
+
+    if family:
+        return family
+
+    return Family.objects.create(
+        name=name,
+        created_by=created_by,
+    )
+
+
+@transaction.atomic
+def create_family_forger(
+    username,
+    password,
+    display_name,
+    age_group="",
+    is_guardian=False,
+    created_by=None,
+):
+    user = get_user_model().objects.create_user(
+        username=username,
+        password=password,
+    )
+    forger = ForgerProfile.objects.create(
+        user=user,
+        display_name=display_name,
+        age_group=age_group,
+        is_guardian=is_guardian,
+    )
+    family = get_or_create_app_family(created_by=created_by or forger)
+    FamilyMembership.objects.create(
+        family=family,
+        forger=forger,
+        role=(
+            FamilyMembership.Role.GUARDIAN
+            if is_guardian
+            else FamilyMembership.Role.MEMBER
+        ),
+    )
+
+    return forger
+
+
+@transaction.atomic
+def delete_family_forger(forger, deleted_by):
+    if deleted_by and forger.pk == deleted_by.pk:
+        raise ValidationError("You cannot delete your own guardian profile.")
+
+    replacement_forger = deleted_by
+    user = forger.user
+
+    Mission.objects.filter(created_by=forger).update(created_by=None)
+    Reward.objects.filter(created_by=forger).update(created_by=None)
+    MissionAssignment.objects.filter(assigned_by=forger).update(assigned_by=None)
+    RewardRedemption.objects.filter(approved_by=forger).update(approved_by=None)
+
+    if replacement_forger:
+        Family.objects.filter(created_by=forger).update(created_by=replacement_forger)
+        MissionCompletion.objects.filter(recorded_by=forger).exclude(
+            assignment__forger=forger
+        ).update(recorded_by=replacement_forger)
+        RewardRedemption.objects.filter(requested_by=forger).exclude(
+            forger=forger
+        ).update(requested_by=replacement_forger)
+
+    StarLedgerEntry.objects.filter(forger=forger).delete()
+    AstralLightLedgerEntry.objects.filter(forger=forger).delete()
+    RewardRedemption.objects.filter(forger=forger).delete()
+    ForgeEvent.objects.filter(forger=forger).delete()
+    MissionAssignment.objects.filter(forger=forger).delete()
+    FamilyMembership.objects.filter(forger=forger).delete()
+    user.delete()
 
 
 @transaction.atomic

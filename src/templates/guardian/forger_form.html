@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Editar forjador{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-2xl px-6 py-8">
+      <div class="mb-6">
+        <a class="btn btn-ghost btn-sm" href="{% url 'guardian:family' %}">
+          Volver
+        </a>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-6">
+          <div>
+            <h1 class="card-title text-2xl">Editar forjador</h1>
+            <p class="text-base-content/70">
+              {{ forger.user.username }}
+            </p>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-error">
+              <span>{{ form.non_field_errors|join:" " }}</span>
+            </div>
+          {% endif %}
+
+          <form class="space-y-6" method="post">
+            {% csrf_token %}
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.display_name.label }}</span>
+              <input
+                class="input input-bordered mt-2 w-full"
+                name="{{ form.display_name.html_name }}"
+                type="text"
+                value="{{ form.display_name.value|default:'' }}"
+                required
+              >
+              {% if form.display_name.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.display_name.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.age_group.label }}</span>
+              <select class="select select-bordered mt-2 w-full" name="{{ form.age_group.html_name }}">
+                <option value="">Sin grupo de edad</option>
+                {% for value, label in form.age_group.field.choices %}
+                  {% if value %}
+                    <option value="{{ value }}" {% if form.age_group.value == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              {% if form.age_group.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.age_group.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 p-4">
+              <input
+                class="checkbox checkbox-primary"
+                type="checkbox"
+                name="{{ form.is_guardian.html_name }}"
+                {% if form.is_guardian.value %}checked{% endif %}
+              >
+              <span class="label-text font-medium">{{ form.is_guardian.label }}</span>
+            </label>
+            {% if form.is_guardian.errors %}
+              <span class="text-sm text-error">{{ form.is_guardian.errors|join:" " }}</span>
+            {% endif %}
+
+            <div class="card-actions justify-end">
+              <a class="btn btn-ghost" href="{% url 'guardian:family' %}">
+                Cancelar
+              </a>
+              <button class="btn btn-primary" type="submit">
+                Guardar cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

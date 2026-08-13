@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Crear forjador{% endblock %}
+
+{% block content %}
+  <section class="min-h-[calc(100vh-5rem)] bg-base-200">
+    <div class="mx-auto max-w-2xl px-6 py-8">
+      <div class="mb-6">
+        <a class="btn btn-ghost btn-sm" href="{% url 'guardian:family' %}">
+          Volver
+        </a>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-6">
+          <div>
+            <h1 class="card-title text-2xl">Crear forjador</h1>
+            <p class="text-base-content/70">
+              Crea el usuario y su perfil familiar en un solo paso.
+            </p>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-error">
+              <span>{{ form.non_field_errors|join:" " }}</span>
+            </div>
+          {% endif %}
+
+          <form class="space-y-6" method="post">
+            {% csrf_token %}
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.username.label }}</span>
+              <input
+                class="input input-bordered mt-2 w-full"
+                name="{{ form.username.html_name }}"
+                type="text"
+                value="{{ form.username.value|default:'' }}"
+                autocomplete="username"
+                required
+              >
+              {% if form.username.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.username.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <label class="form-control w-full">
+                <span class="label-text">{{ form.password.label }}</span>
+                <input
+                  class="input input-bordered mt-2 w-full"
+                  name="{{ form.password.html_name }}"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                >
+                {% if form.password.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.password.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+
+              <label class="form-control w-full">
+                <span class="label-text">{{ form.password_confirm.label }}</span>
+                <input
+                  class="input input-bordered mt-2 w-full"
+                  name="{{ form.password_confirm.html_name }}"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                >
+                {% if form.password_confirm.errors %}
+                  <span class="mt-2 text-sm text-error">{{ form.password_confirm.errors|join:" " }}</span>
+                {% endif %}
+              </label>
+            </div>
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.display_name.label }}</span>
+              <input
+                class="input input-bordered mt-2 w-full"
+                name="{{ form.display_name.html_name }}"
+                type="text"
+                value="{{ form.display_name.value|default:'' }}"
+                required
+              >
+              {% if form.display_name.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.display_name.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <label class="form-control w-full">
+              <span class="label-text">{{ form.age_group.label }}</span>
+              <select class="select select-bordered mt-2 w-full" name="{{ form.age_group.html_name }}">
+                {% for value, label in form.age_group.field.choices %}
+                  <option value="{{ value }}" {% if form.age_group.value == value %}selected{% endif %}>
+                    {{ label }}
+                  </option>
+                {% endfor %}
+              </select>
+              {% if form.age_group.errors %}
+                <span class="mt-2 text-sm text-error">{{ form.age_group.errors|join:" " }}</span>
+              {% endif %}
+            </label>
+
+            <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 p-4">
+              <input
+                class="checkbox checkbox-primary"
+                type="checkbox"
+                name="{{ form.is_guardian.html_name }}"
+                {% if form.is_guardian.value %}checked{% endif %}
+              >
+              <span class="label-text font-medium">{{ form.is_guardian.label }}</span>
+            </label>
+            {% if form.is_guardian.errors %}
+              <span class="text-sm text-error">{{ form.is_guardian.errors|join:" " }}</span>
+            {% endif %}
+
+            <div class="card-actions justify-end">
+              <a class="btn btn-ghost" href="{% url 'guardian:family' %}">
+                Cancelar
+              </a>
+              <button class="btn btn-primary" type="submit">
+                Crear forjador
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
